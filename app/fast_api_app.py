@@ -23,6 +23,7 @@ from a2a.server.tasks import InMemoryTaskStore
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from google.adk.cli.fast_api import get_fast_api_app
 from google.adk.runners import Runner
 from google.cloud import logging as google_cloud_logging
@@ -238,6 +239,11 @@ async def submit_followup_batch(req: FollowupBatchRequest) -> StreamingResponse:
             yield _sse(chunk)
 
     return StreamingResponse(gen(), media_type="text/event-stream")
+
+
+# Static assets (e.g. img/thumbnail.png) referenced by frontend/index.html.
+# Unlike /app, these are fine to let the browser cache normally.
+app.mount("/img", StaticFiles(directory=os.path.join(AGENT_DIR, "img")), name="img")
 
 
 @app.get("/app")

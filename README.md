@@ -1,4 +1,5 @@
-# Shadow Self-Reflection Agent
+# Meet Your Shadow
+### A quiet AI agent for the parts of you that rarely get asked.
 
 A single-session, multi-agent self-reflection tool built on the [Google Agent Development Kit (ADK)](https://google.github.io/adk-docs/). The user answers 16 Likert-scale questions, the system detects psychological tension between paired questions, asks one to three clarifying follow-ups, and generates a personalized narrative grounded in real psychological concepts — then lets the user keep talking about it.
 
@@ -33,24 +34,35 @@ A single prompt blurs that line — it's tempting for "the same call" to sometim
 
 ```mermaid
 flowchart TD
-    User(("Browser"))
-    Frontend["Frontend"]
+    Frontend("🌐 User Interface")
     API["FastAPI (SSE)"]
     Crisis["Crisis check"]
-    Orchestrator["Orchestrator"]
-    Analyst["Analyst Agent"]
-    FollowUp["Follow-Up Agent"]
-    Interpreter["Interpreter Agent"]
-    Companion["Companion Agent"]
+    Orchestrator["🧭 Orchestrator"]
+    Analyst["📊 Analyst Agent"]
+    FollowUp["❓ Follow-Up Agent"]
+    Interpreter["📝 Interpreter Agent"]
+    Companion["💬 Companion Agent"]
+    ScoringFn["Scoring function"]
+    TemplateFn["Follow-up templates"]
     MCP[["Jung MCP Server"]]
 
-    User <--> Frontend <--> API
+    Frontend <--> API
     API --> Crisis --> Orchestrator
     Orchestrator --> Analyst
     Orchestrator --> FollowUp
     Orchestrator --> Interpreter
     Orchestrator --> Companion
+    Analyst --> ScoringFn
+    FollowUp --> TemplateFn
     Interpreter --> MCP
+
+    classDef frontend fill:#cfe8ff,stroke:#4a90d9,color:#1a1a1a
+    classDef agent fill:#ffe1b3,stroke:#e08e2b,color:#1a1a1a
+    classDef tool fill:#d9f2d0,stroke:#5aa93f,color:#1a1a1a
+
+    class Frontend,API,Crisis frontend
+    class Orchestrator,Analyst,FollowUp,Interpreter,Companion agent
+    class ScoringFn,TemplateFn,MCP tool
 ```
 
 **Session state** (per user session) is the single source of truth all agents read and write through: `answers`, `tension_scores`, `top_type`, `followup_queue`, `followup_answers`, `report_generated`, `final_report`, `grounding_concepts`, `current_followup`.
@@ -72,7 +84,7 @@ A few non-obvious decisions worth calling out:
 - **[`google-agents-cli`](https://github.com/google/agents-cli)** — project scaffolding, local dev (`agents-cli run`), and deployment (`agents-cli deploy`) to Cloud Run.
 - **`uv`** for Python dependency management.
 
-Built iteratively in conversation with Claude Code: starting from a written spec, through an architecture addendum (splitting deterministic tools into their own thin agents + adding the MCP tool), through several rounds of live testing that caught real bugs — a nested-agent visibility issue that made follow-up questions and MCP grounding invisible to the frontend, and a redundant re-narration pass that was silently truncating conversation replies.
+Built iteratively in conversation with Claude Code and Antigravity: starting from a written spec, through an architecture addendum (splitting deterministic tools into their own thin agents + adding the MCP tool), through several rounds of live testing that caught real bugs — a nested-agent visibility issue that made follow-up questions and MCP grounding invisible to the frontend, and a redundant re-narration pass that was silently truncating conversation replies.
 
 ---
 

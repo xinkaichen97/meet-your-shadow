@@ -40,6 +40,7 @@
   h1.big-title { font-size: 2.2rem; line-height: 1.25; margin-bottom: 8px; }
   p.shadow-label { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px; }
   h1.hero-title { font-size: 2.6rem; line-height: 1.2; margin-bottom: 20px; }
+  img.hero-thumb { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 14px; margin-bottom: 28px; }
   p.hero-lead { font-size: 1.15rem; margin-bottom: 34px; }
   p { color: var(--muted); }
   .framing p { margin: 0 0 14px; font-size: 1.05rem; }
@@ -341,10 +342,14 @@ function renderFraming() {
   root.innerHTML = `
     <div class="framing floating">
       <h1 class="hero-title">Find out your shadows</h1>
+      <img class="hero-thumb" src="/img/thumbnail.png" alt="" />
       <p class="hero-lead">Everyone carries parts of themselves they've learned to hide — from
-      others, and sometimes from themselves. This short, gentle reflection points to one of eight
-      common patterns hiding in your answers. It won't label you, and if you're not in a steady
-      place right now, it's okay to come back another time.</p>
+      others, and sometimes from themselves. Carl Jung called this the <strong>shadow</strong>: the
+      parts of our personality we don't consciously acknowledge, which tend to surface instead as
+      strong reactions to seeing them in other people.</p>
+      <p class="hero-lead">This short, gentle, AI-powered reflection points to one of eight common
+      patterns hiding in your answers. It won't label you, and if you're not in a steady place
+      right now, it's okay to come back another time.</p>
       <div class="nav-row" style="justify-content:flex-end">
         <button id="start-btn">Ready when you are</button>
       </div>
