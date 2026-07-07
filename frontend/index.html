@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Shadow Self-Reflection</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --bg: #f6f4f9;
+    --card: #ffffff;
+    --ink: #2c2a3a;
+    --muted: #8b87a0;
+    --accent: #6b5b95;
+    --accent-soft: #ece8f6;
+    --border: #ece8f4;
+    --crisis-bg: #fdeeee;
+    --crisis-border: #e8b4b4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.65;
+  }
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 56px 32px 90px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 48px;
+    box-shadow: 0 4px 24px rgba(44, 42, 58, 0.06);
+  }
+  h1 { font-size: 1.5rem; font-weight: 600; margin: 0 0 18px; }
+  h1.big-title { font-size: 2.2rem; line-height: 1.25; margin-bottom: 8px; }
+  p.shadow-label { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px; }
+  h1.hero-title { font-size: 2.6rem; line-height: 1.2; margin-bottom: 20px; }
+  p.hero-lead { font-size: 1.15rem; margin-bottom: 34px; }
+  p { color: var(--muted); }
+  .framing p { margin: 0 0 14px; font-size: 1.05rem; }
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: none;
+    border-radius: 10px;
+    padding: 13px 26px;
+    background: var(--accent);
+    color: white;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  button:hover { opacity: 0.9; }
+  button:active { transform: scale(0.98); }
+  button:disabled { opacity: 0.3; cursor: not-allowed; }
+  button.secondary { background: var(--accent-soft); color: var(--accent); }
+  button.link {
+    background: none;
+    color: var(--muted);
+    padding: 8px 0;
+    font-size: 0.9rem;
+  }
+
+  @keyframes floatIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .floating { animation: floatIn 0.5s cubic-bezier(.2,.8,.2,1) both; }
+
+  .question { margin-bottom: 40px; }
+  .question:last-child { margin-bottom: 0; }
+  .question p.text { color: var(--ink); font-size: 1.28rem; margin: 0 0 20px; font-weight: 450; }
+
+  .scale { display: flex; gap: 14px; justify-content: center; }
+  .dotbtn {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    background: var(--card);
+    color: var(--muted);
+    padding: 0;
+    font-size: 1.05rem;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .dotbtn:hover { border-color: var(--accent); color: var(--accent); opacity: 1; }
+  .dotbtn.selected { background: var(--accent); border-color: var(--accent); color: white; }
+  .scale-labels {
+    display: flex; justify-content: space-between;
+    max-width: 340px; margin: 10px auto 0;
+    font-size: 0.78rem; color: var(--muted);
+  }
+
+  .nav-row { margin-top: 36px; display: flex; justify-content: space-between; align-items: center; }
+
+  .followup-options { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+  .followup-options button { text-align: left; white-space: normal; }
+  .followup-options button.selected { background: var(--accent); color: white; }
+
+  .trace-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--accent-soft); color: var(--accent);
+    border-radius: 999px; padding: 5px 12px;
+    font-size: 0.76rem; font-weight: 500;
+  }
+  .pill.call { opacity: 0.65; }
+
+  .report { font-size: 1.08rem; }
+  .narrative-section { margin-bottom: 28px; }
+  .narrative-section:last-child { margin-bottom: 0; }
+  .narrative-section h3 { font-size: 1.02rem; color: var(--accent); margin: 0 0 8px; font-weight: 600; }
+
+  .grounding-block { background: var(--accent-soft); border-radius: 12px; padding: 14px 20px; margin-bottom: 22px; }
+  .grounding-label { font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); margin: 0 0 6px; }
+  .grounding-list { margin: 0; padding-left: 18px; color: var(--ink); font-size: 0.92rem; }
+  .grounding-list li { margin-bottom: 4px; }
+  .grounding-list li:last-child { margin-bottom: 0; }
+
+  .chat-log { margin-top: 26px; display: flex; flex-direction: column; gap: 14px; }
+  .bubble { padding: 13px 17px; border-radius: 14px; max-width: 85%; white-space: pre-wrap; }
+  .bubble.user { align-self: flex-end; background: var(--accent); color: white; }
+  .bubble.agent { align-self: flex-start; background: var(--accent-soft); color: var(--ink); }
+  .bubble.crisis { align-self: stretch; background: var(--crisis-bg); border: 1px solid var(--crisis-border); color: var(--ink); }
+  .bubble.thinking { align-self: flex-start; background: var(--accent-soft); }
+
+  @keyframes blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin: 0 2px; animation: blink 1.3s infinite both; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+
+  .chat-input-row { display: flex; gap: 10px; margin-top: 20px; }
+  .chat-input-row input {
+    flex: 1;
+    font: inherit;
+    padding: 13px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .hint { font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
+  .spinner { color: var(--muted); font-size: 0.95rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card" id="app-root"></div>
+</div>
+
+<script>
+const QUESTIONS = [
+  {id: "q1",  text: "Sometimes I wish someone would take care of me, instead of me always being the one taking care of others."},
+  {id: "q2",  text: "When someone constantly talks about how hard things are for them, I find it a little pathetic."},
+  {id: "q3",  text: "I often wish someone could truly understand what I'm thinking without me having to explain."},
+  {id: "q4",  text: "When someone always needs to say what's on their mind to feel okay, I find that a bit weak."},
+  {id: "q5",  text: "There are times I really want to say no, but the words get stuck before I say them."},
+  {id: "q6",  text: "When someone flatly says \"I don't want to,\" I secretly think they're a bit selfish."},
+  {id: "q7",  text: "I actually feel angry fairly often, I just rarely show it."},
+  {id: "q8",  text: "When someone loses their temper in public, I think that's poor self-control."},
+  {id: "q9",  text: "After making a decision, I often still can't stop thinking about the other options I didn't choose."},
+  {id: "q10", text: "When someone settles into a decision quickly and stops second-guessing, I think they lack ambition."},
+  {id: "q11", text: "I often sense things are going to happen before they do, but I rarely say so because I doubt anyone would believe me."},
+  {id: "q12", text: "When someone keeps saying \"I had a feeling about this,\" I find it a bit theatrical."},
+  {id: "q13", text: "There are things I genuinely want, but I often feel I shouldn't want them."},
+  {id: "q14", text: "When someone openly says what they want without hesitation, I think that's a little greedy."},
+  {id: "q15", text: "There are things from a long time ago that I say I've let go of, but I haven't, not really."},
+  {id: "q16", text: "When someone keeps bringing up the past and won't let it go, I think they're being unreasonable."},
+];
+const GROUP_SIZE = 8;
+
+const FOLLOWUP_TEMPLATES = {
+  unpermitted_vulnerability: {
+    prompt: "You said you rarely wish to be cared for, but also find it a bit pathetic when others openly share how hard things are. Which feels closer to you right now?",
+    option_a: "I do wish I could be taken care of sometimes — it's just hard to ask.",
+    option_b: "Taking care of myself is still something I'd rather handle alone.",
+  },
+  silent_isolation: {
+    prompt: "You said you wish to be truly understood, but also find it a bit weak when others always need to voice what's on their mind. Which feels closer to you right now?",
+    option_a: "Some things I haven't said, because I'm afraid it wouldn't matter anyway.",
+    option_b: "Some things don't need saying — no one would really get it regardless.",
+  },
+  unspoken_resentment: {
+    prompt: "You said you often want to say no but the words get stuck, but also think people who flatly refuse are a bit selfish. Which feels closer to you right now?",
+    option_a: "There are more moments than I'd like to admit where I wanted to say no and didn't.",
+    option_b: "When it comes to refusing, I'd rather just let it go.",
+  },
+  suppressed_anger: {
+    prompt: "You said you feel angry often but rarely show it, but also think losing your temper in public shows poor self-control. Which feels closer to you right now?",
+    option_a: "There might be more anger in me than I've let myself admit.",
+    option_b: "I'd honestly rather that anger didn't exist at all.",
+  },
+  restless_uncertainty: {
+    prompt: "You said you can't stop thinking about other options after deciding, but also think people who settle quickly lack ambition. Which feels closer to you right now?",
+    option_a: "I may never have really let myself settle on anything.",
+    option_b: "Keeping other possibilities open is what makes me feel safe.",
+  },
+  unvoiced_intuition: {
+    prompt: "You said you often sense things before they happen but rarely say so, but also find it theatrical when others claim the same. Which feels closer to you right now?",
+    option_a: "There's probably more unspoken intuition in me than I admit.",
+    option_b: "Saying it out loud doesn't really change anything anyway.",
+  },
+  forbidden_want: {
+    prompt: "You said you want things you feel you shouldn't want, but also think people who openly want things are a bit greedy. Which feels closer to you right now?",
+    option_a: "I probably want more than I'm comfortable admitting.",
+    option_b: "It's better to keep wanting things quietly.",
+  },
+  unfinished_past: {
+    prompt: "You said you claim to have let go of old things but haven't really, but also think people who keep bringing up the past are being unreasonable. Which feels closer to you right now?",
+    option_a: "There may be more I haven't let go of than I thought.",
+    option_b: "Bringing up the past doesn't really help — better to move forward.",
+  },
+};
+
+function shuffled(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function chunk(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+const root = document.getElementById("app-root");
+let sessionId = null;
+let lastTrace = [];
+
+function el(html) {
+  const t = document.createElement("template");
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
+}
+
+// Agent names are PascalCase, no underscores (e.g. "AnalystAgent") — this
+// just adds spacing for display: "AnalystAgent" -> "Analyst Agent".
+function prettyName(name) {
+  return name.replace(/([a-z])([A-Z])/g, "$1 $2");
+}
+
+function tracePillsInner(trace) {
+  if (!trace || !trace.length) return "";
+  return trace
+    .map((t) =>
+      t.type === "call"
+        ? `<span class="pill call">⚡ ${prettyName(t.name)}</span>`
+        : `<span class="pill done">✓ ${prettyName(t.name)}</span>`
+    )
+    .join("");
+}
+function tracePills(trace) {
+  const inner = tracePillsInner(trace);
+  return inner ? `<div class="trace-row">${inner}</div>` : "";
+}
+
+// Parses the "## Section Name\n<body>" format InterpreterAgent's MODE A
+// output uses. Falls back to plain text if it doesn't find any sections
+// (e.g. a model deviation from the format).
+function renderReportBody(text) {
+  const regex = /##\s+(.+?)\n([\s\S]*?)(?=\n##\s+|$)/g;
+  const sections = [];
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    sections.push({ title: match[1].trim(), body: match[2].trim() });
+  }
+  if (!sections.length) return `<div class="report">${text}</div>`;
+  return sections
+    .map((s) => `<div class="narrative-section"><h3>${s.title}</h3><div class="report">${s.body}</div></div>`)
+    .join("");
+}
+
+// Streams a POST endpoint that responds with SSE ("data: {...}\n\n" chunks).
+// Calls onEvent for every non-final chunk (live call/response pills), and
+// returns the final chunk once the stream ends.
+async function streamPost(url, body, onEvent) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  let finalData = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let idx;
+    while ((idx = buf.indexOf("\n\n")) !== -1) {
+      const raw = buf.slice(0, idx);
+      buf = buf.slice(idx + 2);
+      if (raw.startsWith("data: ")) {
+        const obj = JSON.parse(raw.slice(6));
+        if (obj.type === "final") {
+          finalData = obj;
+        } else {
+          onEvent(obj);
+        }
+      }
+    }
+  }
+  return finalData;
+}
+
+// Live "calling the agent" screen: header text updates with whichever tool
+// is currently in flight, pills accumulate below as call/response events
+// stream in. Also feeds lastTrace so the destination screen can still show
+// the same pill row.
+function renderProcessing(label) {
+  lastTrace = [];
+  root.innerHTML = `
+    <div class="floating">
+      <p class="spinner" id="status-text">${label}</p>
+      <div class="trace-row" id="live-pills"></div>
+    </div>
+  `;
+  const statusEl = document.getElementById("status-text");
+  const pillsEl = document.getElementById("live-pills");
+  return {
+    onEvent(evt) {
+      lastTrace.push(evt);
+      const name = prettyName(evt.name);
+      if (evt.type === "call") {
+        statusEl.textContent = `Calling ${name}...`;
+        pillsEl.insertAdjacentHTML("beforeend", `<span class="pill call">⚡ ${name}</span>`);
+      } else {
+        statusEl.textContent = `${name} responded`;
+        pillsEl.insertAdjacentHTML("beforeend", `<span class="pill done">✓ ${name}</span>`);
+      }
+    },
+  };
+}
+
+function renderFraming() {
+  root.innerHTML = `
+    <div class="framing floating">
+      <h1 class="hero-title">Find out your shadows</h1>
+      <p class="hero-lead">Everyone carries parts of themselves they've learned to hide — from
+      others, and sometimes from themselves. This short, gentle reflection points to one of eight
+      common patterns hiding in your answers. It won't label you, and if you're not in a steady
+      place right now, it's okay to come back another time.</p>
+      <div class="nav-row" style="justify-content:flex-end">
+        <button id="start-btn">Ready when you are</button>
+      </div>
+    </div>`;
+  document.getElementById("start-btn").onclick = () => renderQuiz();
+}
+
+function renderQuiz() {
+  const order = shuffled(QUESTIONS);
+  const groups = chunk(order, GROUP_SIZE);
+  const answers = {};
+  let groupIndex = 0;
+
+  root.innerHTML = `
+    <div id="quiz-shell"></div>
+  `;
+  const shell = document.getElementById("quiz-shell");
+
+  function renderGroup() {
+    const g = groups[groupIndex];
+    const isLast = groupIndex === groups.length - 1;
+    const answeredCount = g.filter((q) => answers[q.id] !== undefined).length;
+
+    shell.innerHTML = `
+      <div class="floating" id="group-block">
+        <div id="questions"></div>
+        <div class="nav-row">
+          ${groupIndex > 0 ? `<button class="link" id="back-btn">← Back</button>` : `<span></span>`}
+          <button id="next-btn" disabled>${isLast ? "Submit" : "Next"}</button>
+        </div>
+      </div>
+    `;
+
+    const qcontainer = document.getElementById("questions");
+    g.forEach((q) => {
+      const block = el(`
+        <div class="question">
+          <p class="text">${q.text}</p>
+          <div class="scale" data-qid="${q.id}">
+            ${[1, 2, 3, 4, 5].map((v) => `<button type="button" class="dotbtn${answers[q.id] === v ? " selected" : ""}" data-v="${v}">${v}</button>`).join("")}
+          </div>
+          <div class="scale-labels"><span>Strongly disagree</span><span>Strongly agree</span></div>
+        </div>
+      `);
+      qcontainer.appendChild(block);
+    });
+
+    const nextBtn = document.getElementById("next-btn");
+    nextBtn.disabled = answeredCount < GROUP_SIZE;
+
+    qcontainer.querySelectorAll(".scale").forEach((scaleEl) => {
+      scaleEl.addEventListener("click", (e) => {
+        const btn = e.target.closest(".dotbtn");
+        if (!btn) return;
+        const qid = scaleEl.dataset.qid;
+        answers[qid] = parseInt(btn.dataset.v, 10);
+        scaleEl.querySelectorAll(".dotbtn").forEach((b) => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        const count = g.filter((qq) => answers[qq.id] !== undefined).length;
+        nextBtn.disabled = count < GROUP_SIZE;
+      });
+    });
+
+    if (groupIndex > 0) {
+      document.getElementById("back-btn").onclick = () => {
+        groupIndex -= 1;
+        renderGroup();
+      };
+    }
+
+    nextBtn.onclick = async () => {
+      if (!isLast) {
+        groupIndex += 1;
+        renderGroup();
+        return;
+      }
+      const proc = renderProcessing("Calling Analyst Agent...");
+      const data = await streamPost("/api/answers", { answers }, proc.onEvent);
+      sessionId = data.session_id;
+      handleTurnResult(data);
+    };
+  }
+
+  renderGroup();
+}
+
+function handleTurnResult(data) {
+  if (!data.report_generated && data.followup_queue && data.followup_queue.length) {
+    renderFollowupPage(data.followup_queue);
+    return;
+  }
+  if (data.report_generated) {
+    renderReport(data);
+    return;
+  }
+  renderReport({ final_report: data.reply, top_type_title: data.top_type_title });
+}
+
+function renderFollowupPage(queue) {
+  const chosen = {};
+
+  root.innerHTML = `
+    <div class="floating">
+      <h1>A couple more things</h1>
+      <div id="fu-questions"></div>
+      <div class="nav-row" style="justify-content:flex-end">
+        <button id="fu-submit" disabled>Continue</button>
+      </div>
+    </div>
+  `;
+
+  const container = document.getElementById("fu-questions");
+  queue.forEach((type) => {
+    const t = FOLLOWUP_TEMPLATES[type];
+    const block = el(`
+      <div class="question">
+        <p class="text">${t.prompt}</p>
+        <div class="followup-options" data-type="${type}">
+          <button type="button" class="fu-opt secondary" data-type="${type}" data-side="a">${t.option_a}</button>
+          <button type="button" class="fu-opt secondary" data-type="${type}" data-side="b">${t.option_b}</button>
+        </div>
+      </div>
+    `);
+    container.appendChild(block);
+  });
+
+  const submitBtn = document.getElementById("fu-submit");
+  container.addEventListener("click", (e) => {
+    const btn = e.target.closest(".fu-opt");
+    if (!btn) return;
+    const type = btn.dataset.type;
+    const template = FOLLOWUP_TEMPLATES[type];
+    chosen[type] = btn.dataset.side === "a" ? template.option_a : template.option_b;
+    container.querySelectorAll(`.fu-opt[data-type="${type}"]`).forEach((b) => b.classList.remove("selected"));
+    btn.classList.add("selected");
+    submitBtn.disabled = Object.keys(chosen).length < queue.length;
+  });
+
+  submitBtn.onclick = async () => {
+    const proc = renderProcessing("Sending follow-up answers to the Analyst Agent...");
+    const data = await streamPost("/api/followup-batch", { session_id: sessionId, answers: chosen }, proc.onEvent);
+    handleTurnResult(data);
+  };
+}
+
+function capitalize(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function renderReport(data) {
+  const hasGrounding = data.grounding_concepts && data.grounding_concepts.length;
+  const pillsInner = tracePillsInner(lastTrace) + (hasGrounding ? `<span class="pill done">✓ MCP: Find Jung Concepts</span>` : "");
+  const pillsRow = pillsInner ? `<div class="trace-row">${pillsInner}</div>` : "";
+  const groundingHtml = hasGrounding
+    ? `<div class="grounding-block">
+         <p class="grounding-label">Relevant ideas</p>
+         <ul class="grounding-list">
+           ${data.grounding_concepts.map((c) => `<li>${capitalize(c)}</li>`).join("")}
+         </ul>
+       </div>`
+    : "";
+  root.innerHTML = `
+    <div class="floating" id="report-section">
+      <p class="shadow-label">Your Shadow Is</p>
+      <h1 class="big-title">${data.top_type_title || "Your reflection"}</h1>
+      ${pillsRow}
+      ${groundingHtml}
+      ${renderReportBody(data.final_report || "")}
+    </div>
+    <div class="chat-log" id="chat-log"></div>
+    <div class="chat-input-row">
+      <input id="chat-input" type="text" placeholder="Say whatever comes to mind..." />
+      <button id="chat-send">Send</button>
+    </div>
+    <div class="hint">You can keep talking about the reflection above, at your own pace.</div>
+  `;
+
+  const log = document.getElementById("chat-log");
+  const input = document.getElementById("chat-input");
+
+  const appendBubble = (text, cls) => {
+    const b = el(`<div class="bubble ${cls} floating">${text}</div>`);
+    log.appendChild(b);
+    b.scrollIntoView({ behavior: "smooth", block: "end" });
+    return b;
+  };
+
+  const sendChat = async () => {
+    const text = input.value.trim();
+    if (!text) return;
+    appendBubble(text, "user");
+    input.value = "";
+
+    // The call pill appears live, as soon as the request goes out — not
+    // after the fact. CompanionAgent is now a real separate agent, so its
+    // actual name is what's shown (no more hardcoded override needed).
+    let pillsRow = null;
+    const thinkingBubble = appendBubble(
+      `<span class="dot"></span><span class="dot"></span><span class="dot"></span>`,
+      "agent thinking"
+    );
+
+    const data = await streamPost("/api/message", { session_id: sessionId, text }, (evt) => {
+      if (!pillsRow) {
+        pillsRow = el(`<div class="trace-row"></div>`);
+        log.insertBefore(pillsRow, thinkingBubble);
+      }
+      const icon = evt.type === "call" ? "⚡" : "✓";
+      const cls = evt.type === "call" ? "call" : "done";
+      pillsRow.insertAdjacentHTML("beforeend", `<span class="pill ${cls}">${icon} ${prettyName(evt.name)}</span>`);
+    });
+
+    thinkingBubble.remove();
+    appendBubble(data.reply, data.crisis ? "crisis" : "agent");
+  };
+
+  document.getElementById("chat-send").onclick = sendChat;
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") sendChat();
+  });
+}
+
+renderFraming();
+</script>
+</body>
+</html>

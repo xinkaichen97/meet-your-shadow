@@ -1,0 +1,142 @@
+[
+  {
+    "id": "shadow_general_1",
+    "shadow_type": null,
+    "keywords": ["shadow", "unconscious", "denial", "repression"],
+    "concept_source": "Jungian concept of the shadow",
+    "content": "In Jungian thought, the shadow is the part of the personality the conscious mind refuses to acknowledge. What gets repressed doesn't disappear — it continues operating from outside awareness, often shaping behavior more than the traits a person consciously identifies with."
+  },
+  {
+    "id": "shadow_general_2",
+    "shadow_type": null,
+    "keywords": ["projection", "judgment of others", "reaction"],
+    "concept_source": "Jungian concept of projection",
+    "content": "Projection describes how qualities a person cannot accept in themselves get attributed to other people instead. This is often visible in unusually strong reactions to a trait in someone else — a reaction disproportionate to the situation, because it is really about something unresolved within."
+  },
+  {
+    "id": "persona_general",
+    "shadow_type": null,
+    "keywords": ["persona", "mask", "social self", "identity"],
+    "concept_source": "Jungian concept of the persona",
+    "content": "The persona is the social mask a person adapts to meet the expectations of their environment. It is useful for functioning in the world, but becomes costly when a person comes to believe the mask is the whole of who they are, leaving no room for what doesn't fit it."
+  },
+  {
+    "id": "individuation_general",
+    "shadow_type": null,
+    "keywords": ["individuation", "integration", "wholeness", "growth"],
+    "concept_source": "Jungian concept of individuation",
+    "content": "Individuation is the lifelong process of integrating the parts of oneself that were once rejected or hidden. The goal isn't to eliminate those parts, but to become more whole by acknowledging what was disowned rather than continuing to fight it from a distance."
+  },
+  {
+    "id": "unpermitted_vulnerability_1",
+    "shadow_type": "unpermitted_vulnerability",
+    "keywords": ["vulnerability", "caretaking", "dependence", "self-sufficiency"],
+    "concept_source": "shadow dynamics of the caretaker persona",
+    "content": "A persona built around competence and self-sufficiency often carries a shadow made of the very dependency needs it was constructed to hide. The more reliable someone appears to others, the more likely their own need to be cared for has gone underground."
+  },
+  {
+    "id": "unpermitted_vulnerability_2",
+    "shadow_type": "unpermitted_vulnerability",
+    "keywords": ["asking for help", "shame", "weakness"],
+    "concept_source": "internalized disapproval of need",
+    "content": "Needs that were met with disapproval early in life often get relabeled internally as weakness. The adult may go on enforcing that same judgment on themselves long after the original disapproving voice is gone, without realizing whose voice it originally was."
+  },
+  {
+    "id": "silent_isolation_1",
+    "shadow_type": "silent_isolation",
+    "keywords": ["being understood", "withholding", "connection"],
+    "concept_source": "defensive self-sufficiency",
+    "content": "Repeated experiences of not being heard can lead someone to stop trying to be understood at all. What looks like calm self-sufficiency is sometimes a form of self-protection that developed because reaching out once felt unsafe or unrewarded."
+  },
+  {
+    "id": "silent_isolation_2",
+    "shadow_type": "silent_isolation",
+    "keywords": ["loneliness", "self-reliance", "trust"],
+    "concept_source": "chosen versus defensive solitude",
+    "content": "There is a real difference between solitude that is chosen and isolation that developed as a defense. The second kind often gets mistaken for independence, when it is closer to a quiet, ongoing expectation that connection will disappoint."
+  },
+  {
+    "id": "unspoken_resentment_1",
+    "shadow_type": "unspoken_resentment",
+    "keywords": ["boundaries", "compliance", "people-pleasing"],
+    "concept_source": "shadow cost of habitual compliance",
+    "content": "Habitual compliance protects relationships in the short term, but it accumulates as a private ledger the person may not consciously register as anger at all — it simply builds quietly, beneath a surface that keeps agreeing."
+  },
+  {
+    "id": "unspoken_resentment_2",
+    "shadow_type": "unspoken_resentment",
+    "keywords": ["saying no", "conflict avoidance", "refusal"],
+    "concept_source": "the fear beneath difficulty refusing",
+    "content": "Difficulty saying no is rarely about the specific request being made. Underneath it is often a much older fear about what disagreement might cost — a fear formed long before the current relationship existed."
+  },
+  {
+    "id": "suppressed_anger_1",
+    "shadow_type": "suppressed_anger",
+    "keywords": ["anger", "emotional suppression", "childhood"],
+    "concept_source": "the shadow life of suppressed anger",
+    "content": "Anger that was consistently punished or shamed in childhood doesn't vanish — it relocates into the shadow, and can resurface later as irritability, physical tension, or an unexplained pull toward conflict happening around, rather than within, the person."
+  },
+  {
+    "id": "suppressed_anger_2",
+    "shadow_type": "suppressed_anger",
+    "keywords": ["composure", "moral judgment", "self-control"],
+    "concept_source": "projection of disowned anger",
+    "content": "People who take pride in staying composed often carry the harshest judgment toward anyone who visibly loses their temper. That intensity of judgment is frequently a sign of how tightly the same impulse is being managed within."
+  },
+  {
+    "id": "restless_uncertainty_1",
+    "shadow_type": "restless_uncertainty",
+    "keywords": ["decision-making", "regret", "possibility"],
+    "concept_source": "avoidance of loss through open options",
+    "content": "Some people manage the anxiety of loss by never fully closing a decision, keeping alternative paths alive in the mind as a way of avoiding the grief of what wasn't chosen — even long after the decision is effectively final."
+  },
+  {
+    "id": "restless_uncertainty_2",
+    "shadow_type": "restless_uncertainty",
+    "keywords": ["commitment", "fear of missing out", "settling"],
+    "concept_source": "restlessness as defense against commitment",
+    "content": "Ongoing restlessness after a choice can function as a defense against the vulnerability of fully committing to one path — and, by extension, to one version of oneself."
+  },
+  {
+    "id": "unvoiced_intuition_1",
+    "shadow_type": "unvoiced_intuition",
+    "keywords": ["intuition", "self-doubt", "perception"],
+    "concept_source": "pre-emptive self-silencing",
+    "content": "A person whose early instincts were repeatedly dismissed often learns to doubt their own perception before anyone else gets the chance to — silencing themselves pre-emptively as a way of avoiding a dismissal that may not even come."
+  },
+  {
+    "id": "unvoiced_intuition_2",
+    "shadow_type": "unvoiced_intuition",
+    "keywords": ["being believed", "invisible knowing", "credibility"],
+    "concept_source": "intuition with nowhere to go",
+    "content": "Intuitive knowledge that is rarely believed doesn't disappear — it just stops looking for an audience, continuing to register privately even after a person has learned that saying it out loud rarely changes anything."
+  },
+  {
+    "id": "forbidden_want_1",
+    "shadow_type": "forbidden_want",
+    "keywords": ["desire", "guilt", "selfishness"],
+    "concept_source": "desire entangled with guilt",
+    "content": "In families or cultures that equate wanting with selfishness, desire becomes entangled with guilt. A person may learn to shrink what they want long before anyone else has the chance to reject it."
+  },
+  {
+    "id": "forbidden_want_2",
+    "shadow_type": "forbidden_want",
+    "keywords": ["scarcity", "deserving", "self-worth"],
+    "concept_source": "quiet belief in not deserving",
+    "content": "A quiet belief that one doesn't deserve to want something can operate beneath many everyday decisions, long after the original source of that belief has been forgotten."
+  },
+  {
+    "id": "unfinished_past_1",
+    "shadow_type": "unfinished_past",
+    "keywords": ["forgiveness", "letting go", "rumination"],
+    "concept_source": "the gap between narrative and felt resolution",
+    "content": "The appearance of having moved on and the felt experience of having moved on are not always the same thing. The gap between them is often exactly where the shadow continues to live, unresolved beneath a story that says otherwise."
+  },
+  {
+    "id": "unfinished_past_2",
+    "shadow_type": "unfinished_past",
+    "keywords": ["memory", "unresolved grief", "recurrence"],
+    "concept_source": "unresolved experience as recurring present",
+    "content": "Unresolved experiences don't stay in the past. They keep reappearing in present-tense feeling — a tightness, a memory that resurfaces unbidden — until they are actually metabolized rather than simply narrated as finished."
+  }
+]
