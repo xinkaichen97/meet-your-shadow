@@ -65,6 +65,28 @@
     font-size: 0.9rem;
   }
 
+  .lang-switch {
+    position: fixed;
+    top: 20px;
+    right: 24px;
+    display: flex;
+    gap: 4px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px;
+    box-shadow: 0 2px 10px rgba(44, 42, 58, 0.1);
+    z-index: 100;
+  }
+  .lang-switch button {
+    background: none;
+    color: var(--muted);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+  }
+  .lang-switch button.active { background: var(--accent); color: white; }
+
   @keyframes floatIn {
     from { opacity: 0; transform: translateY(16px); }
     to { opacity: 1; transform: translateY(0); }
@@ -145,6 +167,10 @@
 </style>
 </head>
 <body>
+<div class="lang-switch" id="lang-switch">
+  <button type="button" class="active" data-lang="en">EN</button>
+  <button type="button" data-lang="zh">中文</button>
+</div>
 <div class="wrap">
   <div class="card" id="app-root"></div>
 </div>
@@ -168,6 +194,26 @@ const QUESTIONS = [
   {id: "q15", text: "There are things from a long time ago that I say I've let go of, but I haven't, not really."},
   {id: "q16", text: "When someone keeps bringing up the past and won't let it go, I think they're being unreasonable."},
 ];
+
+const QUESTIONS_ZH = {
+  q1: "有时候我希望有人能照顾我，而不是总是我在照顾别人。",
+  q2: "当有人总是诉说自己有多辛苦时，我会觉得有点可怜。",
+  q3: "我常常希望有人能真正理解我的想法，而不需要我去解释。",
+  q4: "当有人总是需要把心里话说出来才能安心时，我觉得这有点软弱。",
+  q5: "有时候我真的很想拒绝，但话到嘴边又说不出口。",
+  q6: "当有人直接说“我不想”时，我心里会觉得这个人有点自私。",
+  q7: "其实我经常感到生气，只是很少表现出来。",
+  q8: "当有人在公共场合发脾气时，我会觉得这是缺乏自我控制。",
+  q9: "做出决定之后，我常常还是忍不住去想那些我没选的其他选项。",
+  q10: "当有人很快就能做出决定、不再纠结时，我会觉得这个人缺乏进取心。",
+  q11: "我常常能预感到事情会发生，但很少说出来，因为我觉得没人会相信我。",
+  q12: "当有人总是说“我早就有预感”时，我会觉得有点夸张。",
+  q13: "有些东西我真的很想要，但我常常觉得自己不应该想要。",
+  q14: "当有人毫不犹豫地说出自己想要什么时，我会觉得这有点贪心。",
+  q15: "有些很久以前的事，我嘴上说已经放下了，但其实并没有真正放下。",
+  q16: "当有人总是提起过去、不肯放下时，我会觉得这个人不讲道理。",
+};
+
 const GROUP_SIZE = 8;
 
 const FOLLOWUP_TEMPLATES = {
@@ -213,6 +259,107 @@ const FOLLOWUP_TEMPLATES = {
   },
 };
 
+const FOLLOWUP_TEMPLATES_ZH = {
+  unpermitted_vulnerability: {
+    prompt: "你说自己很少希望被照顾，但也觉得别人诉苦时有点可怜。哪一种感觉更接近你现在的状态？",
+    option_a: "其实我有时候希望被人照顾——只是很难开口。",
+    option_b: "照顾好自己，我还是更愿意一个人来。",
+  },
+  silent_isolation: {
+    prompt: "你说希望被真正理解，但也觉得别人总要把心里话说出来有点软弱。哪一种感觉更接近你现在的状态？",
+    option_a: "有些话我没说，是因为怕说了也没用。",
+    option_b: "有些话不需要说——反正说了也没人真正懂。",
+  },
+  unspoken_resentment: {
+    prompt: "你说常常想拒绝却说不出口，但也觉得直接拒绝的人有点自私。哪一种感觉更接近你现在的状态？",
+    option_a: "说实话，有很多次我想拒绝却没有拒绝，比我愿意承认的还要多。",
+    option_b: "说到拒绝，我还是宁愿算了。",
+  },
+  suppressed_anger: {
+    prompt: "你说自己常常生气但很少表现出来，但也觉得在公共场合发脾气是缺乏自控力。哪一种感觉更接近你现在的状态？",
+    option_a: "也许我心里的怒气，比我愿意承认的更多。",
+    option_b: "说实话，我宁愿这种愤怒根本不存在。",
+  },
+  restless_uncertainty: {
+    prompt: "你说做完决定后还是忍不住想别的选项，但也觉得很快就能安定下来的人缺乏进取心。哪一种感觉更接近你现在的状态？",
+    option_a: "也许我从来没有真正让自己安定在某一个选择上。",
+    option_b: "保留其他可能性，会让我更有安全感。",
+  },
+  unvoiced_intuition: {
+    prompt: "你说常常能预感到事情发生但很少说出来，但也觉得别人这么说时有点夸张。哪一种感觉更接近你现在的状态？",
+    option_a: "也许我心里没说出口的直觉，比我承认的更多。",
+    option_b: "说出来其实也改变不了什么。",
+  },
+  forbidden_want: {
+    prompt: "你说自己想要一些觉得不该想要的东西，但也觉得公开表达想要的人有点贪心。哪一种感觉更接近你现在的状态？",
+    option_a: "也许我想要的，比我愿意承认的更多。",
+    option_b: "想要什么，还是安静地放在心里比较好。",
+  },
+  unfinished_past: {
+    prompt: "你说嘴上说放下了过去但其实没有，但也觉得总提过去的人不讲道理。哪一种感觉更接近你现在的状态？",
+    option_a: "也许我没放下的，比我以为的更多。",
+    option_b: "提起过去也没什么用——还是往前看比较好。",
+  },
+};
+
+const STRINGS = {
+  en: {
+    heroTitle: "Find out your shadows",
+    heroLead1: "Everyone carries parts of themselves they've learned to hide — from others, and sometimes from themselves. Carl Jung called this the <strong>shadow</strong>: the parts of our personality we don't consciously acknowledge, which tend to surface instead as strong reactions to seeing them in other people.",
+    heroLead2: "This short, gentle, AI-powered reflection points to one of eight common patterns hiding in your answers. It won't label you, and if you're not in a steady place right now, it's okay to come back another time.",
+    startBtn: "Ready when you are",
+    scaleLow: "Strongly disagree",
+    scaleHigh: "Strongly agree",
+    next: "Next",
+    submit: "Submit",
+    back: "← Back",
+    followupTitle: "A couple more things",
+    continueBtn: "Continue",
+    yourShadowIs: "Your Shadow Is",
+    relevantIdeas: "Relevant ideas",
+    chatPlaceholder: "Say whatever comes to mind...",
+    send: "Send",
+    chatHint: "You can keep talking about the reflection above, at your own pace.",
+    calling: (name) => `Calling ${name}...`,
+    responded: (name) => `${name} responded`,
+    scoringAnswers: () => `Calling ${prettyName("AnalystAgent")}...`,
+    sendingFollowup: () => `Sending follow-up answers to the ${prettyName("AnalystAgent")}...`,
+    mcpPillLabel: "MCP: Find Jung Concepts",
+  },
+  zh: {
+    heroTitle: "发现你的阴影面",
+    heroLead1: "每个人身上都藏着一些自己学会隐藏起来的部分——有时瞒着别人，有时甚至瞒着自己。荣格（Carl Jung）把这称为<strong>阴影</strong>：那些我们没有意识到的人格部分，往往会以我们对他人某些特质的强烈反应表现出来。",
+    heroLead2: "这是一个简短、温和的 AI 驱动反思练习，会从你的回答中，指出八种常见模式里可能藏着的一种。它不会给你贴标签；如果你现在的状态不太稳定，晚点再来也完全没关系。",
+    startBtn: "准备好了就开始",
+    scaleLow: "非常不同意",
+    scaleHigh: "非常同意",
+    next: "下一步",
+    submit: "提交",
+    back: "← 返回",
+    followupTitle: "还有几个小问题",
+    continueBtn: "继续",
+    yourShadowIs: "你的阴影类型是",
+    relevantIdeas: "相关理念",
+    chatPlaceholder: "想说什么都可以...",
+    send: "发送",
+    chatHint: "你可以按自己的节奏，继续聊聊上面这段反思。",
+    calling: (name) => `正在调用 ${name}...`,
+    responded: (name) => `${name} 已回应`,
+    scoringAnswers: () => `正在调用${prettyName("AnalystAgent")}...`,
+    sendingFollowup: () => `正在将补充回答发送给${prettyName("AnalystAgent")}...`,
+    mcpPillLabel: "MCP：查找荣格概念",
+  },
+};
+
+let currentLanguage = "en";
+function t() { return STRINGS[currentLanguage]; }
+function currentQuestionText(qid) {
+  return currentLanguage === "zh" ? QUESTIONS_ZH[qid] : QUESTIONS.find((q) => q.id === qid).text;
+}
+function currentFollowupTemplates() {
+  return currentLanguage === "zh" ? FOLLOWUP_TEMPLATES_ZH : FOLLOWUP_TEMPLATES;
+}
+
 function shuffled(arr) {
   const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {
@@ -230,6 +377,10 @@ function chunk(arr, size) {
 const root = document.getElementById("app-root");
 let sessionId = null;
 let lastTrace = [];
+// Whichever screen is currently showing re-registers itself here, so the
+// language switcher can re-render "whatever's on screen right now" without
+// each screen needing to know about the others.
+let rerenderCurrentScreen = () => renderFraming();
 
 function el(html) {
   const t = document.createElement("template");
@@ -238,18 +389,28 @@ function el(html) {
 }
 
 // Agent names are PascalCase, no underscores (e.g. "AnalystAgent") — this
-// just adds spacing for display: "AnalystAgent" -> "Analyst Agent".
+// adds spacing for display: "AnalystAgent" -> "Analyst Agent". In zh mode,
+// "Agent" itself stays English (treated like a proper noun / product term)
+// but the descriptive part (Analyst/Follow-Up/Interpreter/Companion) is
+// translated.
+const AGENT_NAME_ZH = {
+  AnalystAgent: "分析 Agent",
+  FollowUpAgent: "追问 Agent",
+  InterpreterAgent: "解读 Agent",
+  CompanionAgent: "陪伴 Agent",
+};
 function prettyName(name) {
+  if (currentLanguage === "zh" && AGENT_NAME_ZH[name]) return AGENT_NAME_ZH[name];
   return name.replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 
 function tracePillsInner(trace) {
   if (!trace || !trace.length) return "";
   return trace
-    .map((t) =>
-      t.type === "call"
-        ? `<span class="pill call">⚡ ${prettyName(t.name)}</span>`
-        : `<span class="pill done">✓ ${prettyName(t.name)}</span>`
+    .map((tr) =>
+      tr.type === "call"
+        ? `<span class="pill call">⚡ ${prettyName(tr.name)}</span>`
+        : `<span class="pill done">✓ ${prettyName(tr.name)}</span>`
     )
     .join("");
 }
@@ -258,9 +419,10 @@ function tracePills(trace) {
   return inner ? `<div class="trace-row">${inner}</div>` : "";
 }
 
-// Parses the "## Section Name\n<body>" format InterpreterAgent's MODE A
-// output uses. Falls back to plain text if it doesn't find any sections
-// (e.g. a model deviation from the format).
+// Parses the "## Section Name\n<body>" format InterpreterAgent's output
+// uses (works the same regardless of language, since it just looks for any
+// "## " header, not hardcoded English section names). Falls back to plain
+// text if it doesn't find any sections (e.g. a model deviation).
 function renderReportBody(text) {
   const regex = /##\s+(.+?)\n([\s\S]*?)(?=\n##\s+|$)/g;
   const sections = [];
@@ -281,7 +443,7 @@ async function streamPost(url, body, onEvent) {
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ...body, language: currentLanguage }),
   });
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -328,10 +490,10 @@ function renderProcessing(label) {
       lastTrace.push(evt);
       const name = prettyName(evt.name);
       if (evt.type === "call") {
-        statusEl.textContent = `Calling ${name}...`;
+        statusEl.textContent = t().calling(name);
         pillsEl.insertAdjacentHTML("beforeend", `<span class="pill call">⚡ ${name}</span>`);
       } else {
-        statusEl.textContent = `${name} responded`;
+        statusEl.textContent = t().responded(name);
         pillsEl.insertAdjacentHTML("beforeend", `<span class="pill done">✓ ${name}</span>`);
       }
     },
@@ -339,59 +501,59 @@ function renderProcessing(label) {
 }
 
 function renderFraming() {
+  rerenderCurrentScreen = renderFraming;
+  const s = t();
   root.innerHTML = `
     <div class="framing floating">
-      <h1 class="hero-title">Find out your shadows</h1>
+      <h1 class="hero-title">${s.heroTitle}</h1>
       <img class="hero-thumb" src="/img/thumbnail.png" alt="" />
-      <p class="hero-lead">Everyone carries parts of themselves they've learned to hide — from
-      others, and sometimes from themselves. Carl Jung called this the <strong>shadow</strong>: the
-      parts of our personality we don't consciously acknowledge, which tend to surface instead as
-      strong reactions to seeing them in other people.</p>
-      <p class="hero-lead">This short, gentle, AI-powered reflection points to one of eight common
-      patterns hiding in your answers. It won't label you, and if you're not in a steady place
-      right now, it's okay to come back another time.</p>
+      <p class="hero-lead">${s.heroLead1}</p>
+      <p class="hero-lead">${s.heroLead2}</p>
       <div class="nav-row" style="justify-content:flex-end">
-        <button id="start-btn">Ready when you are</button>
+        <button id="start-btn">${s.startBtn}</button>
       </div>
     </div>`;
   document.getElementById("start-btn").onclick = () => renderQuiz();
 }
 
 function renderQuiz() {
-  const order = shuffled(QUESTIONS);
-  const groups = chunk(order, GROUP_SIZE);
+  // Shuffle is over question IDs, not full {id, text} objects, so a
+  // language switch mid-quiz can re-render the same shuffled order with
+  // fresh text instead of re-shuffling.
+  const orderIds = shuffled(QUESTIONS.map((q) => q.id));
+  const groupsIds = chunk(orderIds, GROUP_SIZE);
   const answers = {};
   let groupIndex = 0;
 
-  root.innerHTML = `
-    <div id="quiz-shell"></div>
-  `;
+  root.innerHTML = `<div id="quiz-shell"></div>`;
   const shell = document.getElementById("quiz-shell");
 
   function renderGroup() {
-    const g = groups[groupIndex];
-    const isLast = groupIndex === groups.length - 1;
-    const answeredCount = g.filter((q) => answers[q.id] !== undefined).length;
+    rerenderCurrentScreen = renderGroup;
+    const s = t();
+    const gIds = groupsIds[groupIndex];
+    const isLast = groupIndex === groupsIds.length - 1;
+    const answeredCount = gIds.filter((id) => answers[id] !== undefined).length;
 
     shell.innerHTML = `
       <div class="floating" id="group-block">
         <div id="questions"></div>
         <div class="nav-row">
-          ${groupIndex > 0 ? `<button class="link" id="back-btn">← Back</button>` : `<span></span>`}
-          <button id="next-btn" disabled>${isLast ? "Submit" : "Next"}</button>
+          ${groupIndex > 0 ? `<button class="link" id="back-btn">${s.back}</button>` : `<span></span>`}
+          <button id="next-btn" disabled>${isLast ? s.submit : s.next}</button>
         </div>
       </div>
     `;
 
     const qcontainer = document.getElementById("questions");
-    g.forEach((q) => {
+    gIds.forEach((id) => {
       const block = el(`
         <div class="question">
-          <p class="text">${q.text}</p>
-          <div class="scale" data-qid="${q.id}">
-            ${[1, 2, 3, 4, 5].map((v) => `<button type="button" class="dotbtn${answers[q.id] === v ? " selected" : ""}" data-v="${v}">${v}</button>`).join("")}
+          <p class="text">${currentQuestionText(id)}</p>
+          <div class="scale" data-qid="${id}">
+            ${[1, 2, 3, 4, 5].map((v) => `<button type="button" class="dotbtn${answers[id] === v ? " selected" : ""}" data-v="${v}">${v}</button>`).join("")}
           </div>
-          <div class="scale-labels"><span>Strongly disagree</span><span>Strongly agree</span></div>
+          <div class="scale-labels"><span>${s.scaleLow}</span><span>${s.scaleHigh}</span></div>
         </div>
       `);
       qcontainer.appendChild(block);
@@ -408,7 +570,7 @@ function renderQuiz() {
         answers[qid] = parseInt(btn.dataset.v, 10);
         scaleEl.querySelectorAll(".dotbtn").forEach((b) => b.classList.remove("selected"));
         btn.classList.add("selected");
-        const count = g.filter((qq) => answers[qq.id] !== undefined).length;
+        const count = gIds.filter((qq) => answers[qq] !== undefined).length;
         nextBtn.disabled = count < GROUP_SIZE;
       });
     });
@@ -426,7 +588,7 @@ function renderQuiz() {
         renderGroup();
         return;
       }
-      const proc = renderProcessing("Calling Analyst Agent...");
+      const proc = renderProcessing(t().scoringAnswers());
       const data = await streamPost("/api/answers", { answers }, proc.onEvent);
       sessionId = data.session_id;
       handleTurnResult(data);
@@ -449,27 +611,30 @@ function handleTurnResult(data) {
 }
 
 function renderFollowupPage(queue) {
+  rerenderCurrentScreen = () => renderFollowupPage(queue);
   const chosen = {};
+  const s = t();
+  const templates = currentFollowupTemplates();
 
   root.innerHTML = `
     <div class="floating">
-      <h1>A couple more things</h1>
+      <h1>${s.followupTitle}</h1>
       <div id="fu-questions"></div>
       <div class="nav-row" style="justify-content:flex-end">
-        <button id="fu-submit" disabled>Continue</button>
+        <button id="fu-submit" disabled>${s.continueBtn}</button>
       </div>
     </div>
   `;
 
   const container = document.getElementById("fu-questions");
   queue.forEach((type) => {
-    const t = FOLLOWUP_TEMPLATES[type];
+    const template = templates[type];
     const block = el(`
       <div class="question">
-        <p class="text">${t.prompt}</p>
+        <p class="text">${template.prompt}</p>
         <div class="followup-options" data-type="${type}">
-          <button type="button" class="fu-opt secondary" data-type="${type}" data-side="a">${t.option_a}</button>
-          <button type="button" class="fu-opt secondary" data-type="${type}" data-side="b">${t.option_b}</button>
+          <button type="button" class="fu-opt secondary" data-type="${type}" data-side="a">${template.option_a}</button>
+          <button type="button" class="fu-opt secondary" data-type="${type}" data-side="b">${template.option_b}</button>
         </div>
       </div>
     `);
@@ -481,7 +646,7 @@ function renderFollowupPage(queue) {
     const btn = e.target.closest(".fu-opt");
     if (!btn) return;
     const type = btn.dataset.type;
-    const template = FOLLOWUP_TEMPLATES[type];
+    const template = templates[type];
     chosen[type] = btn.dataset.side === "a" ? template.option_a : template.option_b;
     container.querySelectorAll(`.fu-opt[data-type="${type}"]`).forEach((b) => b.classList.remove("selected"));
     btn.classList.add("selected");
@@ -489,7 +654,7 @@ function renderFollowupPage(queue) {
   });
 
   submitBtn.onclick = async () => {
-    const proc = renderProcessing("Sending follow-up answers to the Analyst Agent...");
+    const proc = renderProcessing(t().sendingFollowup());
     const data = await streamPost("/api/followup-batch", { session_id: sessionId, answers: chosen }, proc.onEvent);
     handleTurnResult(data);
   };
@@ -500,20 +665,35 @@ function capitalize(s) {
 }
 
 function renderReport(data) {
+  const s = t();
   const hasGrounding = data.grounding_concepts && data.grounding_concepts.length;
-  const pillsInner = tracePillsInner(lastTrace) + (hasGrounding ? `<span class="pill done">✓ MCP: Find Jung Concepts</span>` : "");
+  const pillsInner = tracePillsInner(lastTrace) + (hasGrounding ? `<span class="pill done">✓ ${s.mcpPillLabel}</span>` : "");
   const pillsRow = pillsInner ? `<div class="trace-row">${pillsInner}</div>` : "";
   const groundingHtml = hasGrounding
     ? `<div class="grounding-block">
-         <p class="grounding-label">Relevant ideas</p>
+         <p class="grounding-label" id="relevant-ideas-label">${s.relevantIdeas}</p>
          <ul class="grounding-list">
            ${data.grounding_concepts.map((c) => `<li>${capitalize(c)}</li>`).join("")}
          </ul>
        </div>`
     : "";
+
+  // Switching language on this screen only relabels the surrounding chrome
+  // in place — it never re-renders the report body or chat log, since
+  // already-generated content doesn't retroactively translate.
+  rerenderCurrentScreen = () => {
+    const s2 = t();
+    document.getElementById("shadow-label").textContent = s2.yourShadowIs;
+    const gl = document.getElementById("relevant-ideas-label");
+    if (gl) gl.textContent = s2.relevantIdeas;
+    document.getElementById("chat-input").placeholder = s2.chatPlaceholder;
+    document.getElementById("chat-send").textContent = s2.send;
+    document.getElementById("chat-hint").textContent = s2.chatHint;
+  };
+
   root.innerHTML = `
     <div class="floating" id="report-section">
-      <p class="shadow-label">Your Shadow Is</p>
+      <p class="shadow-label" id="shadow-label">${s.yourShadowIs}</p>
       <h1 class="big-title">${data.top_type_title || "Your reflection"}</h1>
       ${pillsRow}
       ${groundingHtml}
@@ -521,10 +701,10 @@ function renderReport(data) {
     </div>
     <div class="chat-log" id="chat-log"></div>
     <div class="chat-input-row">
-      <input id="chat-input" type="text" placeholder="Say whatever comes to mind..." />
-      <button id="chat-send">Send</button>
+      <input id="chat-input" type="text" placeholder="${s.chatPlaceholder}" />
+      <button id="chat-send">${s.send}</button>
     </div>
-    <div class="hint">You can keep talking about the reflection above, at your own pace.</div>
+    <div class="hint" id="chat-hint">${s.chatHint}</div>
   `;
 
   const log = document.getElementById("chat-log");
@@ -544,8 +724,8 @@ function renderReport(data) {
     input.value = "";
 
     // The call pill appears live, as soon as the request goes out — not
-    // after the fact. CompanionAgent is now a real separate agent, so its
-    // actual name is what's shown (no more hardcoded override needed).
+    // after the fact. CompanionAgent is a real separate agent, so its
+    // actual name is what's shown (no hardcoded override needed).
     let pillsRow = null;
     const thinkingBubble = appendBubble(
       `<span class="dot"></span><span class="dot"></span><span class="dot"></span>`,
@@ -571,6 +751,16 @@ function renderReport(data) {
     if (e.key === "Enter") sendChat();
   });
 }
+
+document.getElementById("lang-switch").addEventListener("click", (e) => {
+  const btn = e.target.closest("button");
+  if (!btn || btn.classList.contains("active")) return;
+  currentLanguage = btn.dataset.lang;
+  document.querySelectorAll("#lang-switch button").forEach((b) => {
+    b.classList.toggle("active", b.dataset.lang === currentLanguage);
+  });
+  rerenderCurrentScreen();
+});
 
 renderFraming();
 </script>

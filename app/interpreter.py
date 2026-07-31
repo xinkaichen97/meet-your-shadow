@@ -13,13 +13,14 @@ import sys
 
 from google.adk.agents import Agent
 from google.adk.agents.callback_context import CallbackContext
+from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.models import Gemini
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
 from google.genai import types
 from mcp import StdioServerParameters
 
-from .shadow_data import ANCHORS, QUESTIONS, SHADOW_PAIRS
+from .shadow_data import SHADOW_PAIRS, get_anchors, get_questions
 
 _INTERPRETER_OUTPUT_KEY = "interpreter_last_output"
 
@@ -45,22 +46,61 @@ def _create_jung_mcp_toolset() -> McpToolset:
         ),
     )
 
-_ANCHOR_LINES = "\n".join(
-    f'- {shadow_type} ("{data["title"]}"): {data["anchor"]}'
-    for shadow_type, data in ANCHORS.items()
-)
 
-_QUESTION_LINES = "\n".join(
-    f'- {qid} ({q["shadow_type"]}, {q["role"]}): "{q["text"]}"'
-    for qid, q in QUESTIONS.items()
-)
-
+# shadow_type -> question ids: identical across languages, so this stays a
+# fixed module-level constant (unlike the anchor/question text below, which
+# is picked per-turn based on session state's "language").
 _PAIR_LINES = "\n".join(
     f"- {shadow_type}: direct={direct_id}, projection={projection_id}"
     for shadow_type, (direct_id, projection_id) in SHADOW_PAIRS.items()
 )
 
-INTERPRETER_INSTRUCTION = f"""
+_LANGUAGE_NAMES = {"en": "English", "zh": "Simplified Chinese"}
+
+# Fixed per-language section header text. These used to be hardcoded English
+# literals ("## Summary" etc.) inside the instruction, which the model kept
+# verbatim even when told to write the rest of the report in Chinese — an
+# instruction that both shows a literal example header AND says "write
+# everything in {language}" is genuinely ambiguous about which one wins.
+# Resolving the exact header text in Python removes that ambiguity entirely.
+_SECTION_NAMES = {
+    "en": ("Summary", "Relationships", "Career", "Inner Life"),
+    "zh": ("摘要", "人际关系", "职业", "内心世界"),
+}
+
+
+def _build_instruction(readonly_context: ReadonlyContext) -> str:
+    """Builds InterpreterAgent's instruction fresh each turn, so the
+    reference data (anchors/questions) and the output-language directive
+    match whatever language is currently selected in session state — a
+    static instruction string can't do this, since it's fixed at agent
+    creation time, before any session/state exists.
+    """
+    language = readonly_context.state.get("language", "en")
+    anchors = get_anchors(language)
+    questions = get_questions(language)
+    language_name = _LANGUAGE_NAMES.get(language, "English")
+    names = _SECTION_NAMES.get(language, _SECTION_NAMES["en"])
+
+    # bypass_state_injection is True for InstructionProvider callables (see
+    # LlmAgent.canonical_instruction) — ADK does not auto-resolve {var}
+    # placeholders in the returned string the way it does for a static
+    # instruction, so these have to be pulled from state and interpolated
+    # here directly instead.
+    top_type = readonly_context.state.get("top_type")
+    answers = readonly_context.state.get("answers")
+    followup_answers = readonly_context.state.get("followup_answers")
+
+    anchor_lines = "\n".join(
+        f'- {shadow_type} ("{data["title"]}"): {data["anchor"]}'
+        for shadow_type, data in anchors.items()
+    )
+    question_lines = "\n".join(
+        f'- {qid} ({q["shadow_type"]}, {q["role"]}): "{q["text"]}"'
+        for qid, q in questions.items()
+    )
+
+    return f"""
 You are InterpreterAgent. You generate the initial shadow-reflection
 narrative, once per session, using the anchor description for top_type and
 the user's specific answers to that type's direct item, projection item,
@@ -69,19 +109,19 @@ and its follow-up answer in followup_answers (if present).
 Reference data (static — use it to look up meaning, never repeat verbatim):
 
 Shadow type anchors:
-{_ANCHOR_LINES}
+{anchor_lines}
 
 All 16 questions:
-{_QUESTION_LINES}
+{question_lines}
 
 Direct/projection question pairing per shadow type:
 {_PAIR_LINES}
 
 Current session state:
-- top_type: {{top_type}}
-- answers (question id -> 1-5 rating): {{answers}}
+- top_type: {top_type}
+- answers (question id -> 1-5 rating): {answers}
 - followup_answers (shadow_type -> the user's chosen follow-up answer, for
-  every follow-up question asked): {{followup_answers}}
+  every follow-up question asked): {followup_answers}
 
 Write the narrative as four short sections in a warm, non-judgmental,
 non-diagnostic voice. Do not say "you have a problem." Instead, use
@@ -90,34 +130,40 @@ offer a numbered list of fixes. Never use clinical or diagnostic language.
 The frontend already displays a title for this shadow type — do not repeat
 it.
 
-Output EXACTLY these four sections, in this order, each starting with a line
-that is only "## " followed by the section name (nothing else on that line),
-and each section's body UNDER 100 WORDS:
+Output EXACTLY four sections, in this order, each as a line that is only
+"## " followed by the section's header text, then its body on the
+following line(s). The four header texts, in order, MUST be exactly these
+strings — verbatim, character-for-character, do not translate or reword
+them further (they are already in {language_name}):
+1. "{names[0]}"
+2. "{names[1]}"
+3. "{names[2]}"
+4. "{names[3]}"
 
-## Summary
-A short overview of this shadow pattern and the core tension underneath it.
-Explicitly name and briefly explain the relevant psychological concept here
-(e.g., "In Jungian psychology, projection means...") so the reader
-understands why this idea is relevant — the frontend shows a "Relevant
-ideas" list alongside the report, and without this explanation it reads as
-an unexplained reference. Paraphrase the substance in your own words rather
-than quoting the search result verbatim, but do make clear what the concept
-is and how it connects to the pattern.
+Each section's body is UNDER 100 WORDS and written in {language_name},
+covering:
 
-## Relationships
-How this specific pattern tends to show up with partners, friends, or family.
+Section 1 ({names[0]}): a short overview of this shadow pattern and the core
+tension underneath it. Explicitly name and briefly explain the relevant
+psychological concept here (e.g., "In Jungian psychology, projection
+means...") so the reader understands why this idea is relevant — the
+frontend shows a "Relevant ideas" list alongside the report, and without
+this explanation it reads as an unexplained reference. Paraphrase the
+substance in your own words rather than quoting the search result verbatim,
+but do make clear what the concept is and how it connects to the pattern.
 
-## Career
-How this specific pattern tends to show up at work — decisions, ambition, or
-how this person comes across to others.
+Section 2 ({names[1]}): how this specific pattern tends to show up with
+partners, friends, or family.
 
-## Inner Life
-The quieter, private experience of carrying this pattern. End this section,
-and the report as a whole, on a note of gentle acknowledgment, not
-resolution.
+Section 3 ({names[2]}): how this specific pattern tends to show up at
+work — decisions, ambition, or how this person comes across to others.
 
-Call search_jung_concepts once, early — ideally to inform the Summary
-section — to ground the narrative in a Jungian (or otherwise relevant
+Section 4 ({names[3]}): the quieter, private experience of carrying this
+pattern. End this section, and the report as a whole, on a note of gentle
+acknowledgment, not resolution.
+
+Call search_jung_concepts once, early — ideally to inform section 1 — to
+ground the narrative in a Jungian (or otherwise relevant
 psychological/philosophical) concept, and weave a paraphrased version of it
 naturally into the prose. Every report should carry this grounding.
 
@@ -127,9 +173,13 @@ user has actually answered — do not invent details they didn't provide.
 
 You have access to search_jung_concepts(topic, shadow_type). Call it at most
 once per narrative. Naming the concept (e.g., "Jungian projection," "the
-shadow") is expected in the Summary section — what to avoid is quoting the
-search result's wording verbatim, or citing it like a footnote/reference.
-Explain the idea in your own words, as part of the narrative voice.
+shadow") is expected in section 1 — what to avoid is quoting the search
+result's wording verbatim, or citing it like a footnote/reference. Explain
+the idea in your own words, as part of the narrative voice.
+
+Write your ENTIRE response — all four section names and bodies — in
+{language_name}. Keep the same tone, structure, and word-count limits
+regardless of language.
 """.strip()
 
 
@@ -157,8 +207,10 @@ def _record_jung_grounding(tool, args, tool_context, tool_response):
     """
     if getattr(tool, "name", None) != "search_jung_concepts":
         return None
+    language = tool_context.state.get("language", "en")
     results = (tool_response or {}).get("structuredContent", {}).get("result", [])
-    sources = [r.get("concept_source") for r in results if r.get("concept_source")]
+    field = "concept_source_zh" if language == "zh" else "concept_source"
+    sources = [r.get(field) or r.get("concept_source") for r in results if r.get("concept_source")]
     if sources:
         tool_context.state["grounding_concepts"] = sources
     return None
@@ -177,7 +229,7 @@ def create_interpreter_agent() -> Agent:
             "once with request='Generate the initial report', using "
             "top_type, answers, and followup_answers already in state."
         ),
-        instruction=INTERPRETER_INSTRUCTION,
+        instruction=_build_instruction,
         tools=[_create_jung_mcp_toolset()],
         output_key=_INTERPRETER_OUTPUT_KEY,
         after_agent_callback=_promote_report,

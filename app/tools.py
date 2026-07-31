@@ -4,17 +4,20 @@ record_answers. See shadow_test_agent_spec.md sections 2, 4, 5.
 
 from google.adk.tools import ToolContext
 
-from .shadow_data import FOLLOWUP_TEMPLATES, SHADOW_PAIRS
+from .shadow_data import SHADOW_PAIRS, get_followup_templates
 
 
-def record_answers(answers: dict, state: dict) -> dict:
+def record_answers(answers: dict, state: dict, language: str = "en") -> dict:
     """Writes a freshly submitted 16-answer batch into session state.
 
     Plain function, no LLM involved. Called by the backend (outside the
     Runner/Orchestrator loop) when the frontend submits all 16 answers,
-    before the Orchestrator's first turn for this session.
+    before the Orchestrator's first turn for this session. language ("en" or
+    "zh") is stored in state so every agent's instruction and the follow-up
+    template lookup below can read it back for the rest of the session.
     """
     state["answers"] = answers
+    state["language"] = language
     state["tension_scores"] = {}
     state["top_type"] = None
     state["followup_queue"] = []
@@ -94,7 +97,8 @@ def followup_tool(tool_context: ToolContext) -> dict:
         return {"status": "error", "message": "No follow-up question pending."}
 
     current_type = queue[0]
-    template = FOLLOWUP_TEMPLATES[current_type]
+    language = tool_context.state.get("language", "en")
+    template = get_followup_templates(language)[current_type]
     payload = {
         "status": "success",
         "shadow_type": current_type,

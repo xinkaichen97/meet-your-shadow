@@ -34,8 +34,8 @@ from app.app_utils import services
 from app.app_utils.a2a import attach_a2a_routes
 from app.app_utils.telemetry import setup_telemetry
 from app.app_utils.typing import Feedback
-from app.crisis import CRISIS_RESPONSE, is_crisis_text
-from app.shadow_data import ANCHORS
+from app.crisis import get_crisis_response, is_crisis_text
+from app.shadow_data import get_anchors
 from app.tools import record_answers, record_followup_batch
 
 load_dotenv()
@@ -108,16 +108,19 @@ _USER_ID = "local"
 
 class AnswersRequest(BaseModel):
     answers: dict[str, int]
+    language: str = "en"
 
 
 class MessageRequest(BaseModel):
     session_id: str
     text: str
+    language: str = "en"
 
 
 class FollowupBatchRequest(BaseModel):
     session_id: str
     answers: dict[str, str]
+    language: str = "en"
 
 
 def _sse(obj: dict) -> str:
@@ -159,11 +162,12 @@ async def _stream_turn(session_id: str, text: str) -> AsyncGenerator[dict, None]
     )
     state = session.state if session else {}
     top_type = state.get("top_type")
+    anchors = get_anchors(state.get("language", "en"))
     yield {
         "type": "final",
         "reply": "\n".join(reply_parts),
         "top_type": top_type,
-        "top_type_title": ANCHORS.get(top_type, {}).get("title") if top_type else None,
+        "top_type_title": anchors.get(top_type, {}).get("title") if top_type else None,
         "followup_queue": state.get("followup_queue", []),
         "current_followup": state.get("current_followup"),
         "report_generated": state.get("report_generated"),
@@ -177,7 +181,7 @@ async def submit_answers(req: AnswersRequest) -> StreamingResponse:
     """Seeds a new session from a submitted 16-answer batch, then streams the
     Orchestrator's first turn (analyst -> acknowledge follow-ups, or report)."""
     session_id = str(uuid.uuid4())
-    initial_state = record_answers(req.answers, {})
+    initial_state = record_answers(req.answers, {}, req.language)
     await app.state.runner.session_service.create_session(
         app_name=app.state.agent_app_name,
         user_id=_USER_ID,
@@ -199,18 +203,28 @@ async def send_message(req: MessageRequest) -> StreamingResponse:
     """Free-text chat (post-report conversation) comes through here. Crisis
     keywords are checked before the Runner is ever invoked, per spec section 9.
     """
+    if is_crisis_text(req.text):
 
-    async def gen():
-        if is_crisis_text(req.text):
+        async def crisis_gen():
             yield _sse(
                 {
                     "type": "final",
                     "session_id": req.session_id,
-                    "reply": CRISIS_RESPONSE,
+                    "reply": get_crisis_response(req.language),
                     "crisis": True,
                 }
             )
-            return
+
+        return StreamingResponse(crisis_gen(), media_type="text/event-stream")
+
+    # Update language in case the user switched it since the session started
+    # (e.g. mid-conversation) — CompanionAgent reads it fresh each turn.
+    session = await app.state.runner.session_service.get_session(
+        app_name=app.state.agent_app_name, user_id=_USER_ID, session_id=req.session_id
+    )
+    session.state["language"] = req.language
+
+    async def gen():
         async for chunk in _stream_turn(req.session_id, req.text):
             if chunk["type"] == "final":
                 chunk["session_id"] = req.session_id
@@ -228,6 +242,7 @@ async def submit_followup_batch(req: FollowupBatchRequest) -> StreamingResponse:
     session = await app.state.runner.session_service.get_session(
         app_name=app.state.agent_app_name, user_id=_USER_ID, session_id=req.session_id
     )
+    session.state["language"] = req.language
     record_followup_batch(req.answers, session.state)
 
     async def gen():

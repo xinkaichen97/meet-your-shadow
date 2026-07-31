@@ -35,7 +35,11 @@ def search_jung_concepts(
             the Interpreter should paraphrase, not dump every match into the narrative).
 
     Returns:
-        A list of {"content": str, "concept_source": str} dicts, most relevant first.
+        A list of {"content": str, "concept_source": str, "concept_source_zh": str}
+        dicts, most relevant first. concept_source_zh is the Simplified
+        Chinese label for the same concept, shown to the user verbatim (the
+        Interpreter agent paraphrases "content" itself, so that field stays
+        English-only — only the short label needs a translated counterpart).
     """
     topic_lower = topic.lower()
     candidates = []
@@ -52,15 +56,19 @@ def search_jung_concepts(
 
     candidates.sort(key=lambda pair: pair[0], reverse=True)
 
+    def _to_result(e: dict) -> dict:
+        return {
+            "content": e["content"],
+            "concept_source": e["concept_source"],
+            "concept_source_zh": e.get("concept_source_zh", e["concept_source"]),
+        }
+
     if not candidates:
         # fallback: return the general entries so the tool never returns nothing
         general = [e for e in CORPUS if e["shadow_type"] is None][:max_results]
-        return [{"content": e["content"], "concept_source": e["concept_source"]} for e in general]
+        return [_to_result(e) for e in general]
 
-    return [
-        {"content": e["content"], "concept_source": e["concept_source"]}
-        for _, e in candidates[:max_results]
-    ]
+    return [_to_result(e) for _, e in candidates[:max_results]]
 
 
 if __name__ == "__main__":
