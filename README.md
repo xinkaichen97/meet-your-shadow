@@ -3,7 +3,11 @@
 
 A single-session, multi-agent self-reflection tool built on the [Google Agent Development Kit (ADK)](https://google.github.io/adk-docs/). The user answers 16 Likert-scale questions, the system detects psychological tension between paired questions, asks one to three clarifying follow-ups, and generates a personalized narrative grounded in real psychological concepts — then lets the user keep talking about it.
 
-**Live demo:** https://shadow-agent-887841120412.us-east1.run.app/app
+**Live webpage:** https://shadow-agent-887841120412.us-east1.run.app/app (turned off at the moment due to hosting costs)
+
+**Demo video**: https://youtu.be/XI6WVBIIGuo
+
+**Kaggle writeup:** https://www.kaggle.com/competitions/vibecoding-agents-capstone-project/writeups/meetyourshadow
 
 ---
 
