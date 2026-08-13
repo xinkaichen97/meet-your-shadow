@@ -1,11 +1,24 @@
 """Orchestrator: the root agent for the Shadow Self-Reflection Agent. See
 shadow_test_agent_spec.md sections 1 and 7.
+
+The routing below (which specialist agent runs next) is a plain function of
+session state — it was never actually a judgment call, so it's implemented
+as a deterministic Python BaseAgent instead of an LlmAgent that spent a real
+Gemini call every turn just to re-derive rules the code already knew. Each
+specialist agent still runs in its own isolated turn via AgentTool (state
+copied in, state deltas copied back out) — only the *decision* of which one
+to invoke stopped costing an LLM call.
 """
 
-from google.adk.agents import Agent
+from collections.abc import AsyncGenerator
+
+from google.adk.agents import BaseAgent
+from google.adk.agents.invocation_context import InvocationContext
 from google.adk.apps import App
-from google.adk.models import Gemini
+from google.adk.events import Event
+from google.adk.events.event_actions import EventActions
 from google.adk.tools import AgentTool
+from google.adk.tools.tool_context import ToolContext
 from google.genai import types
 
 from .analyst_agent import create_analyst_agent
@@ -13,81 +26,85 @@ from .companion_agent import create_companion_agent
 from .followup_agent import create_followup_agent
 from .interpreter import create_interpreter_agent
 
-ORCHESTRATOR_INSTRUCTION = """
-You are the Orchestrator for a self-reflection companion product. You do not
-generate any emotional narrative or psychological interpretation yourself —
-that is InterpreterAgent's and CompanionAgent's job. Your only
-responsibility is to decide which agent to call next based on current
-state, and to bridge between steps with one or two short, warm sentences.
 
-You can see the following state fields:
-- tension_scores: tension score per shadow type (empty if not yet computed)
-- top_type: the shadow type with the highest current tension score
-- followup_queue: shadow types still needing a follow-up question, ranked
-  highest tension first (always 1-3 entries once AnalystAgent has run)
-- followup_answers: shadow_type -> the user's chosen follow-up answer
-- report_generated: whether the final report has already been generated
-
-The frontend collects answers to every queued follow-up question on one page
-and submits them all together outside this conversation — by the time you
-see followup_queue as empty, it's because they were all just answered, not
-because none were needed.
-
-Follow this order and act on the first rule that applies:
-
-1. If tension_scores is empty -> call AnalystAgent to score all 16 answers.
-2. If followup_queue is non-empty (right after AnalystAgent just ran) ->
-   call FollowUpAgent once, purely to acknowledge that a few follow-up
-   questions are coming. Do nothing else this turn.
-3. If followup_queue is empty and report_generated is false -> call
-   InterpreterAgent with request="Generate the initial report", using
-   top_type, all collected answers, and followup_answers to generate the
-   final narrative.
-4. If report_generated is true and the user has sent new free text (not a
-   structured answer) -> call CompanionAgent with request set to the
-   user's free text, verbatim, so it can respond in continuity with the
-   report InterpreterAgent already wrote. Do not recompute tension_scores
-   or regenerate the report.
-
-Tone requirements:
-- Keep your own bridging text minimal — one or two sentences, never
-  repeating what the agent itself already said.
-- Never rush, judge, or use directive language like "you should" or
-  "you need to."
-- If an agent call fails or returns something unexpected, respond with one
-  gentle sentence inviting the user to try again. Never expose technical
-  error details.
-""".strip()
+def _content_text(content: types.Content | None) -> str:
+    if not content or not content.parts:
+        return ""
+    return "".join(p.text or "" for p in content.parts)
 
 
-def create_orchestrator() -> Agent:
+class Orchestrator(BaseAgent):
+    """Deterministic router across the four specialist agents.
+
+    Mirrors the original rule set exactly:
+    1. tension_scores empty -> AnalystAgent scores all 16 answers.
+    2. followup_queue non-empty (right after AnalystAgent ran) ->
+       FollowUpAgent composes the question(s); relayed to the user verbatim.
+    3. followup_queue empty and report not generated -> InterpreterAgent
+       writes the initial report.
+    4. report already generated -> CompanionAgent continues the conversation
+       with the user's free text.
+    """
+
+    analyst_agent_tool: AgentTool
+    followup_agent_tool: AgentTool
+    interpreter_agent_tool: AgentTool
+    companion_agent_tool: AgentTool
+
+    async def _call_specialist(
+        self, tool: AgentTool, args: dict, ctx: InvocationContext
+    ) -> tuple[str, EventActions]:
+        actions = EventActions()
+        tool_context = ToolContext(invocation_context=ctx, event_actions=actions)
+        text = await tool.run_async(args=args, tool_context=tool_context)
+        return text, actions
+
+    async def _run_async_impl(
+        self, ctx: InvocationContext
+    ) -> AsyncGenerator[Event, None]:
+        state = ctx.session.state
+
+        if not state.get("tension_scores"):
+            _, actions = await self._call_specialist(
+                self.analyst_agent_tool, {}, ctx
+            )
+            # AnalystAgent's own reply text is internal bookkeeping only and
+            # was never shown to the user even in the LLM-routed design —
+            # only the state it writes (tension_scores, followup_queue, ...)
+            # matters here.
+            yield Event(author=self.name, actions=actions)
+
+        if state.get("followup_queue"):
+            text, actions = await self._call_specialist(
+                self.followup_agent_tool, {}, ctx
+            )
+        elif not state.get("report_generated"):
+            text, actions = await self._call_specialist(
+                self.interpreter_agent_tool,
+                {"request": "Generate the initial report"},
+                ctx,
+            )
+        else:
+            user_text = _content_text(ctx.user_content)
+            text, actions = await self._call_specialist(
+                self.companion_agent_tool, {"request": user_text}, ctx
+            )
+
+        yield Event(
+            author=self.name,
+            content=types.Content(role="model", parts=[types.Part.from_text(text=text)]),
+            actions=actions,
+        )
+
+
+def create_orchestrator() -> Orchestrator:
     """Factory for the Orchestrator root agent."""
-    analyst_agent_tool = AgentTool(create_analyst_agent())
-    followup_agent_tool = AgentTool(create_followup_agent())
-    # skip_summarization on InterpreterAgent/CompanionAgent: both are always
-    # the last call in their turn, so there's nothing to gain from having
-    # the Orchestrator generate a second pass re-narrating what they already
-    # said well — only risk (an awkward cutoff, extra latency/cost). Their
-    # exact text is relayed verbatim instead.
-    interpreter_agent_tool = AgentTool(
-        create_interpreter_agent(), skip_summarization=True
-    )
-    companion_agent_tool = AgentTool(
-        create_companion_agent(), skip_summarization=True
-    )
-    return Agent(
+    return Orchestrator(
         name="Orchestrator",
-        model=Gemini(
-            model="gemini-flash-latest",
-            retry_options=types.HttpRetryOptions(attempts=3),
-        ),
-        instruction=ORCHESTRATOR_INSTRUCTION,
-        tools=[
-            analyst_agent_tool,
-            followup_agent_tool,
-            interpreter_agent_tool,
-            companion_agent_tool,
-        ],
+        analyst_agent_tool=AgentTool(create_analyst_agent()),
+        followup_agent_tool=AgentTool(create_followup_agent()),
+        interpreter_agent_tool=AgentTool(create_interpreter_agent()),
+        companion_agent_tool=AgentTool(create_companion_agent()),
     )
 
 

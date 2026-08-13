@@ -15,6 +15,7 @@
 import contextlib
 import json
 import os
+import re
 import uuid
 from collections.abc import AsyncGenerator, AsyncIterator
 
@@ -26,6 +27,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from google.adk.cli.fast_api import get_fast_api_app
 from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
 from google.cloud import logging as google_cloud_logging
 from google.genai import types
 from pydantic import BaseModel
@@ -35,8 +37,10 @@ from app.app_utils.a2a import attach_a2a_routes
 from app.app_utils.telemetry import setup_telemetry
 from app.app_utils.typing import Feedback
 from app.crisis import get_crisis_response, is_crisis_text
+from app.interpreter import _SECTION_NAMES
 from app.shadow_data import get_anchors
 from app.tools import record_answers, record_followup_batch
+from app.translator_agent import create_translator_agent
 
 load_dotenv()
 setup_telemetry()
@@ -123,35 +127,81 @@ class FollowupBatchRequest(BaseModel):
     language: str = "en"
 
 
+class TranslateReportRequest(BaseModel):
+    report: str
+    target_language: str
+
+
+_LANGUAGE_NAMES = {"en": "English", "zh": "Simplified Chinese"}
+_SECTION_RE = re.compile(r"##\s*(.+?)\s*\n([\s\S]*?)(?=\n##|\Z)")
+_NUMBERED_ITEM_RE = re.compile(r"^\s*\d+\.\s*(.*)$")
+
+
 def _sse(obj: dict) -> str:
     return f"data: {json.dumps(obj)}\n\n"
 
 
-async def _stream_turn(session_id: str, text: str) -> AsyncGenerator[dict, None]:
-    """Sends one message through the Orchestrator, yielding a dict per
-    call/response event as they happen (for live pill-badge display), then a
-    final dict with the reply and the session state fields the frontend
-    needs to decide what to render next.
+async def _translate_items(items: list[str], target_language: str) -> list[str]:
+    """One-shot literal translation of a list of short text items via a
+    throwaway agent/session — for content generated earlier in another
+    language, not a full regeneration. Falls back to the originals if the
+    model's output doesn't line up item-for-item, rather than risk silently
+    misaligning translated text with the wrong item.
+    """
+    if not items:
+        return []
+    language_name = _LANGUAGE_NAMES.get(target_language, "English")
+    agent = create_translator_agent(language_name)
+    session_service = InMemorySessionService()
+    session = await session_service.create_session(app_name="translate", user_id=_USER_ID)
+    runner = Runner(agent=agent, app_name="translate", session_service=session_service)
+
+    prompt = "\n".join(f"{i + 1}. {item}" for i, item in enumerate(items))
+    content = types.Content(role="user", parts=[types.Part.from_text(text=prompt)])
+    reply = ""
+    async for event in runner.run_async(
+        user_id=_USER_ID, session_id=session.id, new_message=content
+    ):
+        if event.is_final_response() and event.content and event.content.parts:
+            reply = "".join(p.text or "" for p in event.content.parts)
+
+    lines = [line for line in reply.strip().split("\n") if line.strip()]
+    translated = [
+        (m.group(1) if (m := _NUMBERED_ITEM_RE.match(line)) else line) for line in lines
+    ]
+    return translated if len(translated) == len(items) else items
+
+
+async def _stream_turn(
+    session_id: str, text: str, state_delta: dict | None = None
+) -> AsyncGenerator[dict, None]:
+    """Sends one message through the Orchestrator, then yields a final dict
+    with the reply and the session state fields the frontend needs to decide
+    what to render next.
+
+    state_delta is applied atomically as part of starting this turn — NOT by
+    mutating a session fetched via get_session() beforehand, since ADK's
+    session services return a detached copy from get_session() and mutating
+    its .state silently never reaches canonical storage.
     """
     runner: Runner = app.state.runner
     content = types.Content(role="user", parts=[types.Part.from_text(text=text)])
     reply_parts: list[str] = []
 
     async for event in runner.run_async(
-        user_id=_USER_ID, session_id=session_id, new_message=content
+        user_id=_USER_ID,
+        session_id=session_id,
+        new_message=content,
+        state_delta=state_delta,
     ):
-        for fc in event.get_function_calls() or []:
-            yield {"type": "call", "name": fc.name}
-        for fr in event.get_function_responses() or []:
-            yield {"type": "response", "name": fr.name}
-            # InterpreterAgent's AgentTool has skip_summarization=True, so its
-            # response event IS the final response (see google.adk.events
-            # .event.Event.is_final_response) — there's no follow-up text
-            # event to read, the reply is this function response verbatim.
-            if event.is_final_response() and isinstance(fr.response, dict):
-                result = fr.response.get("result")
-                if result:
-                    reply_parts.append(str(result))
+        # AnalystAgent's own event carries a followup_queue delta. An empty
+        # one means no real conflict was found, so the Orchestrator is about
+        # to go straight to InterpreterAgent this turn — tell the frontend
+        # so it can swap its wait-screen text before the report itself is
+        # ready (which is a separate, later event).
+        delta = event.actions.state_delta if event.actions else {}
+        if "followup_queue" in delta and not delta["followup_queue"]:
+            yield {"type": "phase", "phase": "report"}
         if event.is_final_response() and event.content and event.content.parts:
             text = "".join(p.text or "" for p in event.content.parts)
             if text:
@@ -169,10 +219,11 @@ async def _stream_turn(session_id: str, text: str) -> AsyncGenerator[dict, None]
         "top_type": top_type,
         "top_type_title": anchors.get(top_type, {}).get("title") if top_type else None,
         "followup_queue": state.get("followup_queue", []),
-        "current_followup": state.get("current_followup"),
+        "followup_details": state.get("followup_details"),
         "report_generated": state.get("report_generated"),
         "final_report": state.get("final_report"),
-        "grounding_concepts": state.get("grounding_concepts"),
+        "grounding_concepts_en": state.get("grounding_concepts_en"),
+        "grounding_concepts_zh": state.get("grounding_concepts_zh"),
     }
 
 
@@ -217,15 +268,13 @@ async def send_message(req: MessageRequest) -> StreamingResponse:
 
         return StreamingResponse(crisis_gen(), media_type="text/event-stream")
 
-    # Update language in case the user switched it since the session started
-    # (e.g. mid-conversation) — CompanionAgent reads it fresh each turn.
-    session = await app.state.runner.session_service.get_session(
-        app_name=app.state.agent_app_name, user_id=_USER_ID, session_id=req.session_id
-    )
-    session.state["language"] = req.language
-
     async def gen():
-        async for chunk in _stream_turn(req.session_id, req.text):
+        # Language delta applied atomically as this turn starts, in case the
+        # user switched it since the session started — CompanionAgent reads
+        # it fresh each turn.
+        async for chunk in _stream_turn(
+            req.session_id, req.text, state_delta={"language": req.language}
+        ):
             if chunk["type"] == "final":
                 chunk["session_id"] = req.session_id
             yield _sse(chunk)
@@ -242,18 +291,50 @@ async def submit_followup_batch(req: FollowupBatchRequest) -> StreamingResponse:
     session = await app.state.runner.session_service.get_session(
         app_name=app.state.agent_app_name, user_id=_USER_ID, session_id=req.session_id
     )
-    session.state["language"] = req.language
-    record_followup_batch(req.answers, session.state)
+    delta = record_followup_batch(session.state, req.answers)
+    delta["language"] = req.language
 
     async def gen():
         async for chunk in _stream_turn(
-            req.session_id, "I've answered the follow-up questions."
+            req.session_id, "I've answered the follow-up questions.", state_delta=delta
         ):
             if chunk["type"] == "final":
                 chunk["session_id"] = req.session_id
             yield _sse(chunk)
 
     return StreamingResponse(gen(), media_type="text/event-stream")
+
+
+@app.post("/api/translate-report")
+async def translate_report(req: TranslateReportRequest) -> dict:
+    """One-shot literal translation of an already-generated report into a
+    different language, for the report screen's language switcher. The
+    report was written once by InterpreterAgent in whichever language was
+    selected at generation time — this translates the existing text rather
+    than regenerating it, so switching back and forth doesn't produce a
+    different narrative each time.
+
+    Grounding concept labels are NOT translated here — they come straight
+    from the curated MCP corpus, which already has a native-language label
+    for each concept (concept_source / concept_source_zh); the frontend maps
+    to that directly instead of running a curated label through a generic
+    translator, which would drift from the actual curated phrasing.
+    """
+    sections = _SECTION_RE.findall(req.report)
+    bodies = [body.strip() for _, body in sections] if sections else [req.report]
+
+    translated_bodies = await _translate_items(bodies, req.target_language)
+
+    if sections:
+        names = _SECTION_NAMES.get(req.target_language, _SECTION_NAMES["en"])
+        translated_report = "\n\n".join(
+            f"## {names[i] if i < len(names) else sections[i][0]}\n{body}"
+            for i, body in enumerate(translated_bodies)
+        )
+    else:
+        translated_report = translated_bodies[0] if translated_bodies else req.report
+
+    return {"report": translated_report}
 
 
 # Static assets (e.g. img/thumbnail.png) referenced by frontend/index.html.

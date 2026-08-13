@@ -50,8 +50,9 @@ resource "google_cloud_run_v2_service" "app" {
       resources {
         limits = {
           cpu    = "1"
-          memory = "4Gi"
+          memory = "1Gi"
         }
+        cpu_idle = true
       }
 
       env {
@@ -69,8 +70,8 @@ resource "google_cloud_run_v2_service" "app" {
     max_instance_request_concurrency = 8
 
     scaling {
-      min_instance_count = 1
-      max_instance_count = 10
+      min_instance_count = 0
+      max_instance_count = 3
     }
 
     session_affinity = true

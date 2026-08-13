@@ -90,6 +90,13 @@ def _build_instruction(readonly_context: ReadonlyContext) -> str:
     top_type = readonly_context.state.get("top_type")
     answers = readonly_context.state.get("answers")
     followup_answers = readonly_context.state.get("followup_answers")
+    tension_scores = readonly_context.state.get("tension_scores") or {}
+
+    # Second-highest-tension type, if there is a real runner-up — this gives
+    # the model a genuinely different angle to draw on for at least one
+    # section, instead of describing top_type four times in different words.
+    ranked = sorted(tension_scores, key=tension_scores.get, reverse=True)
+    secondary_type = next((t for t in ranked if t != top_type), None)
 
     anchor_lines = "\n".join(
         f'- {shadow_type} ("{data["title"]}"): {data["anchor"]}'
@@ -102,9 +109,10 @@ def _build_instruction(readonly_context: ReadonlyContext) -> str:
 
     return f"""
 You are InterpreterAgent. You generate the initial shadow-reflection
-narrative, once per session, using the anchor description for top_type and
-the user's specific answers to that type's direct item, projection item,
-and its follow-up answer in followup_answers (if present).
+narrative, once per session, centered on top_type but drawing on the user's
+full set of 16 answers — not just top_type's own direct/projection pair —
+so the report reads as personal to this specific person, not a generic
+description of top_type repeated four times.
 
 Reference data (static — use it to look up meaning, never repeat verbatim):
 
@@ -119,6 +127,10 @@ Direct/projection question pairing per shadow type:
 
 Current session state:
 - top_type: {top_type}
+- secondary_type (second-highest tension, for a genuinely different angle —
+  may be None if scores were flat): {secondary_type}
+- tension_scores (all 8 types, for context on how much they stood out
+  relative to each other): {tension_scores}
 - answers (question id -> 1-5 rating): {answers}
 - followup_answers (shadow_type -> the user's chosen follow-up answer, for
   every follow-up question asked): {followup_answers}
@@ -140,27 +152,40 @@ them further (they are already in {language_name}):
 3. "{names[2]}"
 4. "{names[3]}"
 
-Each section's body is UNDER 100 WORDS and written in {language_name},
-covering:
+Each section's body is UNDER 100 WORDS and written in {language_name}. Each
+section MUST ground itself in different concrete evidence from what the
+user actually answered, not the same one or two data points restated in new
+phrasing. Skimming the same tension four times, just relabeled by life
+domain, is the failure mode to avoid. Write it as a smooth, natural
+narrative — never cite raw question IDs or literal numbers/ratings in the
+text (e.g. do not write "(q1=1)" or "(rated 5/5)"); translate what the
+answers reveal into plain language instead.
 
-Section 1 ({names[0]}): a short overview of this shadow pattern and the core
-tension underneath it. Explicitly name and briefly explain the relevant
-psychological concept here (e.g., "In Jungian psychology, projection
-means...") so the reader understands why this idea is relevant — the
-frontend shows a "Relevant ideas" list alongside the report, and without
-this explanation it reads as an unexplained reference. Paraphrase the
-substance in your own words rather than quoting the search result verbatim,
-but do make clear what the concept is and how it connects to the pattern.
+Section 1 ({names[0]}): a short overview of top_type's core tension, citing
+its direct/projection pair specifically. Explicitly name and briefly
+explain the relevant psychological concept here (e.g., "In Jungian
+psychology, projection means...") so the reader understands why this idea
+is relevant — the frontend shows a "Relevant ideas" list alongside the
+report, and without this explanation it reads as an unexplained reference.
+Paraphrase the substance in your own words rather than quoting the search
+result verbatim, but do make clear what the concept is and how it connects
+to the pattern.
 
-Section 2 ({names[1]}): how this specific pattern tends to show up with
-partners, friends, or family.
+Section 2 ({names[1]}): how top_type's pattern shows up with partners,
+friends, or family. If secondary_type is present and plausibly shows up
+relationally, weave it in as a second thread rather than only restating
+top_type — real people carry more than one pattern at once.
 
-Section 3 ({names[2]}): how this specific pattern tends to show up at
-work — decisions, ambition, or how this person comes across to others.
+Section 3 ({names[2]}): how this person's answers suggest they navigate
+work — decisions, ambition, how they come across to others. Ground this in
+different specific answers than section 2 used (e.g., a different question
+pair, or secondary_type if it fits better here than in section 2 and wasn't
+already used) so it doesn't just reword the same observation.
 
-Section 4 ({names[3]}): the quieter, private experience of carrying this
-pattern. End this section, and the report as a whole, on a note of gentle
-acknowledgment, not resolution.
+Section 4 ({names[3]}): the quieter, private experience of carrying
+top_type's pattern (and secondary_type's, if it was introduced above). End
+this section, and the report as a whole, on a note of gentle acknowledgment,
+not resolution.
 
 Call search_jung_concepts once, early — ideally to inform section 1 — to
 ground the narrative in a Jungian (or otherwise relevant
@@ -169,7 +194,9 @@ naturally into the prose. Every report should carry this grounding.
 
 Never rush the user, never use words like "should" or "must," respect the
 100-words-per-section limit, and keep the narrative grounded in what the
-user has actually answered — do not invent details they didn't provide.
+user has actually answered — do not invent details they didn't provide, and
+do not fabricate a secondary pattern if secondary_type is None or its
+answers don't actually support it.
 
 You have access to search_jung_concepts(topic, shadow_type). Call it at most
 once per narrative. Naming the concept (e.g., "Jungian projection," "the
@@ -204,15 +231,26 @@ def _record_jung_grounding(tool, args, tool_context, tool_response):
     that grounding actually happened. This writes the concept source(s) to
     state, which — unlike tool call/response events — does propagate back
     through AgentTool regardless of nesting.
+
+    Each corpus match already carries both concept_source and
+    concept_source_zh (curated labels, not machine-translated at request
+    time) — stores both so a later language switch on the report screen can
+    map to the corresponding native label instead of running it through a
+    generic translator, which would produce a different, less natural phrase
+    than the one actually curated for that language.
     """
     if getattr(tool, "name", None) != "search_jung_concepts":
         return None
-    language = tool_context.state.get("language", "en")
     results = (tool_response or {}).get("structuredContent", {}).get("result", [])
-    field = "concept_source_zh" if language == "zh" else "concept_source"
-    sources = [r.get(field) or r.get("concept_source") for r in results if r.get("concept_source")]
-    if sources:
-        tool_context.state["grounding_concepts"] = sources
+    sources_en = [r.get("concept_source") for r in results if r.get("concept_source")]
+    sources_zh = [
+        r.get("concept_source_zh") or r.get("concept_source")
+        for r in results
+        if r.get("concept_source")
+    ]
+    if sources_en:
+        tool_context.state["grounding_concepts_en"] = sources_en
+        tool_context.state["grounding_concepts_zh"] = sources_zh
     return None
 
 

@@ -98,49 +98,6 @@ SHADOW_PAIRS = {
     "unfinished_past": ("q15", "q16"),
 }
 
-FOLLOWUP_TEMPLATES = {
-    "unpermitted_vulnerability": {
-        "prompt": "You said you rarely wish to be cared for, but also find it a bit pathetic when others openly share how hard things are. Which feels closer to you right now?",
-        "option_a": "I do wish I could be taken care of sometimes — it's just hard to ask.",
-        "option_b": "Taking care of myself is still something I'd rather handle alone.",
-    },
-    "silent_isolation": {
-        "prompt": "You said you wish to be truly understood, but also find it a bit weak when others always need to voice what's on their mind. Which feels closer to you right now?",
-        "option_a": "Some things I haven't said, because I'm afraid it wouldn't matter anyway.",
-        "option_b": "Some things don't need saying — no one would really get it regardless.",
-    },
-    "unspoken_resentment": {
-        "prompt": "You said you often want to say no but the words get stuck, but also think people who flatly refuse are a bit selfish. Which feels closer to you right now?",
-        "option_a": "There are more moments than I'd like to admit where I wanted to say no and didn't.",
-        "option_b": "When it comes to refusing, I'd rather just let it go.",
-    },
-    "suppressed_anger": {
-        "prompt": "You said you feel angry often but rarely show it, but also think losing your temper in public shows poor self-control. Which feels closer to you right now?",
-        "option_a": "There might be more anger in me than I've let myself admit.",
-        "option_b": "I'd honestly rather that anger didn't exist at all.",
-    },
-    "restless_uncertainty": {
-        "prompt": "You said you can't stop thinking about other options after deciding, but also think people who settle quickly lack ambition. Which feels closer to you right now?",
-        "option_a": "I may never have really let myself settle on anything.",
-        "option_b": "Keeping other possibilities open is what makes me feel safe.",
-    },
-    "unvoiced_intuition": {
-        "prompt": "You said you often sense things before they happen but rarely say so, but also find it theatrical when others claim the same. Which feels closer to you right now?",
-        "option_a": "There's probably more unspoken intuition in me than I admit.",
-        "option_b": "Saying it out loud doesn't really change anything anyway.",
-    },
-    "forbidden_want": {
-        "prompt": "You said you want things you feel you shouldn't want, but also think people who openly want things are a bit greedy. Which feels closer to you right now?",
-        "option_a": "I probably want more than I'm comfortable admitting.",
-        "option_b": "It's better to keep wanting things quietly.",
-    },
-    "unfinished_past": {
-        "prompt": "You said you claim to have let go of old things but haven't really, but also think people who keep bringing up the past are being unreasonable. Which feels closer to you right now?",
-        "option_a": "There may be more I haven't let go of than I thought.",
-        "option_b": "Bringing up the past doesn't really help — better to move forward.",
-    },
-}
-
 ANCHORS = {
     "unpermitted_vulnerability": {
         "title": "The Vulnerability I Wasn't Allowed",
@@ -178,8 +135,8 @@ ANCHORS = {
 
 # --- Simplified Chinese translations. Added alongside the English tables
 # above (which stay untouched as the "en" default) for the zh locale. Keyed
-# identically so get_questions()/get_followup_templates()/get_anchors()
-# below can swap tables without changing any existing call site. ---
+# identically so get_questions()/get_anchors() below can swap tables without
+# changing any existing call site. ---
 
 QUESTIONS_ZH = {
     "q1": {
@@ -264,49 +221,6 @@ QUESTIONS_ZH = {
     },
 }
 
-FOLLOWUP_TEMPLATES_ZH = {
-    "unpermitted_vulnerability": {
-        "prompt": "你说自己很少希望被照顾，但也觉得别人诉苦时有点可怜。哪一种感觉更接近你现在的状态？",
-        "option_a": "其实我有时候希望被人照顾——只是很难开口。",
-        "option_b": "照顾好自己，我还是更愿意一个人来。",
-    },
-    "silent_isolation": {
-        "prompt": "你说希望被真正理解，但也觉得别人总要把心里话说出来有点软弱。哪一种感觉更接近你现在的状态？",
-        "option_a": "有些话我没说，是因为怕说了也没用。",
-        "option_b": "有些话不需要说——反正说了也没人真正懂。",
-    },
-    "unspoken_resentment": {
-        "prompt": "你说常常想拒绝却说不出口，但也觉得直接拒绝的人有点自私。哪一种感觉更接近你现在的状态？",
-        "option_a": "说实话，有很多次我想拒绝却没有拒绝，比我愿意承认的还要多。",
-        "option_b": "说到拒绝，我还是宁愿算了。",
-    },
-    "suppressed_anger": {
-        "prompt": "你说自己常常生气但很少表现出来，但也觉得在公共场合发脾气是缺乏自控力。哪一种感觉更接近你现在的状态？",
-        "option_a": "也许我心里的怒气，比我愿意承认的更多。",
-        "option_b": "说实话，我宁愿这种愤怒根本不存在。",
-    },
-    "restless_uncertainty": {
-        "prompt": "你说做完决定后还是忍不住想别的选项，但也觉得很快就能安定下来的人缺乏进取心。哪一种感觉更接近你现在的状态？",
-        "option_a": "也许我从来没有真正让自己安定在某一个选择上。",
-        "option_b": "保留其他可能性，会让我更有安全感。",
-    },
-    "unvoiced_intuition": {
-        "prompt": "你说常常能预感到事情发生但很少说出来，但也觉得别人这么说时有点夸张。哪一种感觉更接近你现在的状态？",
-        "option_a": "也许我心里没说出口的直觉，比我承认的更多。",
-        "option_b": "说出来其实也改变不了什么。",
-    },
-    "forbidden_want": {
-        "prompt": "你说自己想要一些觉得不该想要的东西，但也觉得公开表达想要的人有点贪心。哪一种感觉更接近你现在的状态？",
-        "option_a": "也许我想要的，比我愿意承认的更多。",
-        "option_b": "想要什么，还是安静地放在心里比较好。",
-    },
-    "unfinished_past": {
-        "prompt": "你说嘴上说放下了过去但其实没有，但也觉得总提过去的人不讲道理。哪一种感觉更接近你现在的状态？",
-        "option_a": "也许我没放下的，比我以为的更多。",
-        "option_b": "提起过去也没什么用——还是往前看比较好。",
-    },
-}
-
 ANCHORS_ZH = {
     "unpermitted_vulnerability": {
         "title": "不被允许的脆弱",
@@ -345,10 +259,6 @@ ANCHORS_ZH = {
 
 def get_questions(language: str = "en") -> dict:
     return QUESTIONS_ZH if language == "zh" else QUESTIONS
-
-
-def get_followup_templates(language: str = "en") -> dict:
-    return FOLLOWUP_TEMPLATES_ZH if language == "zh" else FOLLOWUP_TEMPLATES
 
 
 def get_anchors(language: str = "en") -> dict:

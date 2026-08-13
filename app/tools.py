@@ -1,10 +1,10 @@
-"""Deterministic (non-LLM) building blocks: AnalystTool, FollowUpTool, and
-record_answers. See shadow_test_agent_spec.md sections 2, 4, 5.
+"""Deterministic (non-LLM) building blocks: AnalystTool and record_answers.
+See shadow_test_agent_spec.md sections 2, 4, 5.
 """
 
 from google.adk.tools import ToolContext
 
-from .shadow_data import SHADOW_PAIRS, get_followup_templates
+from .shadow_data import SHADOW_PAIRS
 
 
 def record_answers(answers: dict, state: dict, language: str = "en") -> dict:
@@ -13,8 +13,8 @@ def record_answers(answers: dict, state: dict, language: str = "en") -> dict:
     Plain function, no LLM involved. Called by the backend (outside the
     Runner/Orchestrator loop) when the frontend submits all 16 answers,
     before the Orchestrator's first turn for this session. language ("en" or
-    "zh") is stored in state so every agent's instruction and the follow-up
-    template lookup below can read it back for the rest of the session.
+    "zh") is stored in state so every agent's instruction can read it back
+    for the rest of the session.
     """
     state["answers"] = answers
     state["language"] = language
@@ -22,6 +22,7 @@ def record_answers(answers: dict, state: dict, language: str = "en") -> dict:
     state["top_type"] = None
     state["followup_queue"] = []
     state["followup_answers"] = {}
+    state["followup_details"] = None
     state["report_generated"] = False
     state["final_report"] = None
     return state
@@ -32,10 +33,13 @@ def analyst_tool(tool_context: ToolContext) -> dict:
 
     For each shadow type, combines how strongly the direct item was denied
     (a low score) with how strongly the same trait was projected onto others
-    (a high score) into a single tension_score. The highest-tension type
-    always gets a follow-up question; the 2nd and 3rd highest also get one
-    if they independently trip the same denial/projection trigger — so
-    followup_queue always has 1-3 entries, ranked highest tension first.
+    (a high score) into a single tension_score. A follow-up question is only
+    warranted when a type shows a genuine denial/projection conflict (direct
+    <= 2 and projection >= 4) — top_type does NOT automatically get one just
+    for ranking highest; a mild top_type with no real conflict shouldn't be
+    interrogated further. Checks the top 3 ranked types, so followup_queue
+    can be empty (no real conflict at all) up to 3 entries, ranked highest
+    tension first.
 
     Returns:
         dict with status, tension_scores, top_type, and followup_count.
@@ -53,8 +57,8 @@ def analyst_tool(tool_context: ToolContext) -> dict:
     ranked = sorted(tension_scores, key=tension_scores.get, reverse=True)
     top_type = ranked[0]
 
-    followup_queue = [top_type]
-    for candidate in ranked[1:3]:
+    followup_queue = []
+    for candidate in ranked[:3]:
         direct_id, projection_id = SHADOW_PAIRS[candidate]
         if answers[direct_id] <= 2 and answers[projection_id] >= 4:
             followup_queue.append(candidate)
@@ -72,62 +76,29 @@ def analyst_tool(tool_context: ToolContext) -> dict:
     }
 
 
-def followup_tool(tool_context: ToolContext) -> dict:
-    """Looks up the fixed follow-up question for the next queued shadow type.
+def record_followup_batch(current_state: dict, answers: dict) -> dict:
+    """Computes the state delta for recording every currently pending
+    follow-up answer at once.
 
-    Deterministic template lookup, no LLM generation. Neither option is
-    framed as more "correct" than the other. Peeks the front of
-    followup_queue without removing it — record_followup_batch does that
-    once the user actually answers (via a dedicated endpoint, not this tool).
+    Plain function, no LLM involved. Returns a delta dict meant to be passed
+    as Runner.run_async's `state_delta` argument for the next turn — NOT
+    applied by mutating a session fetched via get_session() directly: ADK's
+    session services return a detached copy from get_session(), so mutating
+    its .state has no effect on canonical storage. state_delta is the
+    sanctioned way to inject state changes before a turn starts.
 
-    Also writes the payload to session state under current_followup: since
-    FollowUpTool now runs inside its own AgentTool-wrapped agent, this
-    function's return value is only visible to that sub-agent's own LLM
-    turn — the Orchestrator (and the frontend) never sees this dict
-    directly, only whatever prose the sub-agent writes based on it. State
-    writes, unlike tool call/response events, are forwarded back through
-    AgentTool regardless of nesting, so current_followup is the reliable
-    channel for the frontend to render exact option text.
-
-    Returns:
-        dict with status, shadow_type, prompt, option_a, and option_b.
+    current_state: a read-only snapshot (e.g. from get_session()) used only
+    to read the existing followup_queue/followup_answers to merge into.
     """
-    queue = tool_context.state.get("followup_queue", [])
-    if not queue:
-        return {"status": "error", "message": "No follow-up question pending."}
-
-    current_type = queue[0]
-    language = tool_context.state.get("language", "en")
-    template = get_followup_templates(language)[current_type]
-    payload = {
-        "status": "success",
-        "shadow_type": current_type,
-        "prompt": template["prompt"],
-        "option_a": template["option_a"],
-        "option_b": template["option_b"],
-    }
-    tool_context.state["current_followup"] = payload
-    return payload
-
-
-def record_followup_batch(answers: dict, state: dict) -> dict:
-    """Records answers to every currently pending follow-up question at once.
-
-    Plain function, no LLM involved. The frontend now shows all queued
-    follow-up questions on a single page and submits them together, so
-    there's no per-question chaining through the Orchestrator anymore —
-    this runs directly against the session's state dict (mirroring
-    record_answers) before the next Runner turn starts, clearing
-    followup_queue entirely.
-    """
-    queue = list(state.get("followup_queue", []))
-    followup_answers = dict(state.get("followup_answers", {}))
+    queue = list(current_state.get("followup_queue", []))
+    followup_answers = dict(current_state.get("followup_answers", {}))
 
     for shadow_type in queue:
         if shadow_type in answers:
             followup_answers[shadow_type] = answers[shadow_type]
 
-    state["followup_queue"] = []
-    state["followup_answers"] = followup_answers
-    state["current_followup"] = None
-    return state
+    return {
+        "followup_queue": [],
+        "followup_answers": followup_answers,
+        "followup_details": None,
+    }

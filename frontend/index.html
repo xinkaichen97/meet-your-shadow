@@ -42,6 +42,9 @@
   h1.hero-title { font-size: 2.6rem; line-height: 1.2; margin-bottom: 20px; }
   img.hero-thumb { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 14px; margin-bottom: 28px; }
   p.hero-lead { font-size: 1.15rem; margin-bottom: 34px; }
+  p.type-preview-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 12px; }
+  ul.type-preview-list { list-style: none; margin: 0 0 34px; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+  ul.type-preview-list li { background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 8px 16px; font-size: 0.88rem; }
   p { color: var(--muted); }
   .framing p { margin: 0 0 14px; font-size: 1.05rem; }
   button {
@@ -122,15 +125,6 @@
   .followup-options button { text-align: left; white-space: normal; }
   .followup-options button.selected { background: var(--accent); color: white; }
 
-  .trace-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
-  .pill {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: var(--accent-soft); color: var(--accent);
-    border-radius: 999px; padding: 5px 12px;
-    font-size: 0.76rem; font-weight: 500;
-  }
-  .pill.call { opacity: 0.65; }
-
   .report { font-size: 1.08rem; }
   .narrative-section { margin-bottom: 28px; }
   .narrative-section:last-child { margin-bottom: 0; }
@@ -163,7 +157,7 @@
     border: 1px solid var(--border);
   }
   .hint { font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
-  .spinner { color: var(--muted); font-size: 0.95rem; }
+  .spinner { color: var(--ink); font-size: 1.4rem; font-weight: 450; text-align: center; padding: 40px 0; }
 </style>
 </head>
 <body>
@@ -216,90 +210,30 @@ const QUESTIONS_ZH = {
 
 const GROUP_SIZE = 8;
 
-const FOLLOWUP_TEMPLATES = {
-  unpermitted_vulnerability: {
-    prompt: "You said you rarely wish to be cared for, but also find it a bit pathetic when others openly share how hard things are. Which feels closer to you right now?",
-    option_a: "I do wish I could be taken care of sometimes — it's just hard to ask.",
-    option_b: "Taking care of myself is still something I'd rather handle alone.",
-  },
-  silent_isolation: {
-    prompt: "You said you wish to be truly understood, but also find it a bit weak when others always need to voice what's on their mind. Which feels closer to you right now?",
-    option_a: "Some things I haven't said, because I'm afraid it wouldn't matter anyway.",
-    option_b: "Some things don't need saying — no one would really get it regardless.",
-  },
-  unspoken_resentment: {
-    prompt: "You said you often want to say no but the words get stuck, but also think people who flatly refuse are a bit selfish. Which feels closer to you right now?",
-    option_a: "There are more moments than I'd like to admit where I wanted to say no and didn't.",
-    option_b: "When it comes to refusing, I'd rather just let it go.",
-  },
-  suppressed_anger: {
-    prompt: "You said you feel angry often but rarely show it, but also think losing your temper in public shows poor self-control. Which feels closer to you right now?",
-    option_a: "There might be more anger in me than I've let myself admit.",
-    option_b: "I'd honestly rather that anger didn't exist at all.",
-  },
-  restless_uncertainty: {
-    prompt: "You said you can't stop thinking about other options after deciding, but also think people who settle quickly lack ambition. Which feels closer to you right now?",
-    option_a: "I may never have really let myself settle on anything.",
-    option_b: "Keeping other possibilities open is what makes me feel safe.",
-  },
-  unvoiced_intuition: {
-    prompt: "You said you often sense things before they happen but rarely say so, but also find it theatrical when others claim the same. Which feels closer to you right now?",
-    option_a: "There's probably more unspoken intuition in me than I admit.",
-    option_b: "Saying it out loud doesn't really change anything anyway.",
-  },
-  forbidden_want: {
-    prompt: "You said you want things you feel you shouldn't want, but also think people who openly want things are a bit greedy. Which feels closer to you right now?",
-    option_a: "I probably want more than I'm comfortable admitting.",
-    option_b: "It's better to keep wanting things quietly.",
-  },
-  unfinished_past: {
-    prompt: "You said you claim to have let go of old things but haven't really, but also think people who keep bringing up the past are being unreasonable. Which feels closer to you right now?",
-    option_a: "There may be more I haven't let go of than I thought.",
-    option_b: "Bringing up the past doesn't really help — better to move forward.",
-  },
+// Titles only (not the full anchor descriptions) — used both for the
+// framing page's preview list and to instantly relabel the report screen's
+// big title on a language switch (keyed by shadow_type so it can be looked
+// up directly, unlike the report body, which needs actual translation).
+const SHADOW_TITLES = {
+  unpermitted_vulnerability: "The Vulnerability I Wasn't Allowed",
+  silent_isolation: "The Isolation I Chose",
+  unspoken_resentment: "The Resentment I Never Said",
+  suppressed_anger: "The Anger I Wasn't Allowed",
+  restless_uncertainty: "The Choice I Can't Let Go Of",
+  unvoiced_intuition: "The Knowing I Learned to Doubt",
+  forbidden_want: "The Wanting I Called Selfish",
+  unfinished_past: "The Past I Said I'd Let Go",
 };
 
-const FOLLOWUP_TEMPLATES_ZH = {
-  unpermitted_vulnerability: {
-    prompt: "你说自己很少希望被照顾，但也觉得别人诉苦时有点可怜。哪一种感觉更接近你现在的状态？",
-    option_a: "其实我有时候希望被人照顾——只是很难开口。",
-    option_b: "照顾好自己，我还是更愿意一个人来。",
-  },
-  silent_isolation: {
-    prompt: "你说希望被真正理解，但也觉得别人总要把心里话说出来有点软弱。哪一种感觉更接近你现在的状态？",
-    option_a: "有些话我没说，是因为怕说了也没用。",
-    option_b: "有些话不需要说——反正说了也没人真正懂。",
-  },
-  unspoken_resentment: {
-    prompt: "你说常常想拒绝却说不出口，但也觉得直接拒绝的人有点自私。哪一种感觉更接近你现在的状态？",
-    option_a: "说实话，有很多次我想拒绝却没有拒绝，比我愿意承认的还要多。",
-    option_b: "说到拒绝，我还是宁愿算了。",
-  },
-  suppressed_anger: {
-    prompt: "你说自己常常生气但很少表现出来，但也觉得在公共场合发脾气是缺乏自控力。哪一种感觉更接近你现在的状态？",
-    option_a: "也许我心里的怒气，比我愿意承认的更多。",
-    option_b: "说实话，我宁愿这种愤怒根本不存在。",
-  },
-  restless_uncertainty: {
-    prompt: "你说做完决定后还是忍不住想别的选项，但也觉得很快就能安定下来的人缺乏进取心。哪一种感觉更接近你现在的状态？",
-    option_a: "也许我从来没有真正让自己安定在某一个选择上。",
-    option_b: "保留其他可能性，会让我更有安全感。",
-  },
-  unvoiced_intuition: {
-    prompt: "你说常常能预感到事情发生但很少说出来，但也觉得别人这么说时有点夸张。哪一种感觉更接近你现在的状态？",
-    option_a: "也许我心里没说出口的直觉，比我承认的更多。",
-    option_b: "说出来其实也改变不了什么。",
-  },
-  forbidden_want: {
-    prompt: "你说自己想要一些觉得不该想要的东西，但也觉得公开表达想要的人有点贪心。哪一种感觉更接近你现在的状态？",
-    option_a: "也许我想要的，比我愿意承认的更多。",
-    option_b: "想要什么，还是安静地放在心里比较好。",
-  },
-  unfinished_past: {
-    prompt: "你说嘴上说放下了过去但其实没有，但也觉得总提过去的人不讲道理。哪一种感觉更接近你现在的状态？",
-    option_a: "也许我没放下的，比我以为的更多。",
-    option_b: "提起过去也没什么用——还是往前看比较好。",
-  },
+const SHADOW_TITLES_ZH = {
+  unpermitted_vulnerability: "不被允许的脆弱",
+  silent_isolation: "我选择的孤独",
+  unspoken_resentment: "从未说出口的怨气",
+  suppressed_anger: "不被允许的愤怒",
+  restless_uncertainty: "放不下的选择",
+  unvoiced_intuition: "被我学会怀疑的直觉",
+  forbidden_want: "被我称作自私的渴望",
+  unfinished_past: "我说已放下的过去",
 };
 
 const STRINGS = {
@@ -313,18 +247,16 @@ const STRINGS = {
     next: "Next",
     submit: "Submit",
     back: "← Back",
-    followupTitle: "A couple more things",
+    followupTitle: (count) => (count === 1 ? "One more question" : "A couple more things"),
     continueBtn: "Continue",
     yourShadowIs: "Your Shadow Is",
     relevantIdeas: "Relevant ideas",
     chatPlaceholder: "Say whatever comes to mind...",
     send: "Send",
     chatHint: "You can keep talking about the reflection above, at your own pace.",
-    calling: (name) => `Calling ${name}...`,
-    responded: (name) => `${name} responded`,
-    scoringAnswers: () => `Calling ${prettyName("AnalystAgent")}...`,
-    sendingFollowup: () => `Sending follow-up answers to the ${prettyName("AnalystAgent")}...`,
-    mcpPillLabel: "MCP: Find Jung Concepts",
+    processingAnswers: "Reading your answers...",
+    processingReport: "Generating your report...",
+    typesPreviewLabel: "Eight patterns this reflection can surface",
   },
   zh: {
     heroTitle: "发现你的阴影面",
@@ -336,18 +268,16 @@ const STRINGS = {
     next: "下一步",
     submit: "提交",
     back: "← 返回",
-    followupTitle: "还有几个小问题",
+    followupTitle: (count) => (count === 1 ? "还有一个小问题" : "还有几个小问题"),
     continueBtn: "继续",
     yourShadowIs: "你的阴影类型是",
     relevantIdeas: "相关理念",
     chatPlaceholder: "想说什么都可以...",
     send: "发送",
     chatHint: "你可以按自己的节奏，继续聊聊上面这段反思。",
-    calling: (name) => `正在调用 ${name}...`,
-    responded: (name) => `${name} 已回应`,
-    scoringAnswers: () => `正在调用${prettyName("AnalystAgent")}...`,
-    sendingFollowup: () => `正在将补充回答发送给${prettyName("AnalystAgent")}...`,
-    mcpPillLabel: "MCP：查找荣格概念",
+    processingAnswers: "正在解读你的回答...",
+    processingReport: "正在生成你的报告...",
+    typesPreviewLabel: "本次反思可能涉及的八种模式",
   },
 };
 
@@ -356,10 +286,6 @@ function t() { return STRINGS[currentLanguage]; }
 function currentQuestionText(qid) {
   return currentLanguage === "zh" ? QUESTIONS_ZH[qid] : QUESTIONS.find((q) => q.id === qid).text;
 }
-function currentFollowupTemplates() {
-  return currentLanguage === "zh" ? FOLLOWUP_TEMPLATES_ZH : FOLLOWUP_TEMPLATES;
-}
-
 function shuffled(arr) {
   const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {
@@ -376,7 +302,6 @@ function chunk(arr, size) {
 
 const root = document.getElementById("app-root");
 let sessionId = null;
-let lastTrace = [];
 // Whichever screen is currently showing re-registers itself here, so the
 // language switcher can re-render "whatever's on screen right now" without
 // each screen needing to know about the others.
@@ -388,38 +313,7 @@ function el(html) {
   return t.content.firstElementChild;
 }
 
-// Agent names are PascalCase, no underscores (e.g. "AnalystAgent") — this
-// adds spacing for display: "AnalystAgent" -> "Analyst Agent". In zh mode,
-// "Agent" itself stays English (treated like a proper noun / product term)
-// but the descriptive part (Analyst/Follow-Up/Interpreter/Companion) is
-// translated.
-const AGENT_NAME_ZH = {
-  AnalystAgent: "分析 Agent",
-  FollowUpAgent: "追问 Agent",
-  InterpreterAgent: "解读 Agent",
-  CompanionAgent: "陪伴 Agent",
-};
-function prettyName(name) {
-  if (currentLanguage === "zh" && AGENT_NAME_ZH[name]) return AGENT_NAME_ZH[name];
-  return name.replace(/([a-z])([A-Z])/g, "$1 $2");
-}
-
-function tracePillsInner(trace) {
-  if (!trace || !trace.length) return "";
-  return trace
-    .map((tr) =>
-      tr.type === "call"
-        ? `<span class="pill call">⚡ ${prettyName(tr.name)}</span>`
-        : `<span class="pill done">✓ ${prettyName(tr.name)}</span>`
-    )
-    .join("");
-}
-function tracePills(trace) {
-  const inner = tracePillsInner(trace);
-  return inner ? `<div class="trace-row">${inner}</div>` : "";
-}
-
-// Parses the "## Section Name\n<body>" format InterpreterAgent's output
+// Parses the "## Section Name\n<body>" format the report output
 // uses (works the same regardless of language, since it just looks for any
 // "## " header, not hardcoded English section names). Falls back to plain
 // text if it doesn't find any sections (e.g. a model deviation).
@@ -471,44 +365,28 @@ async function streamPost(url, body, onEvent) {
   return finalData;
 }
 
-// Live "calling the agent" screen: header text updates with whichever tool
-// is currently in flight, pills accumulate below as call/response events
-// stream in. Also feeds lastTrace so the destination screen can still show
-// the same pill row.
 function renderProcessing(label) {
-  lastTrace = [];
   root.innerHTML = `
     <div class="floating">
-      <p class="spinner" id="status-text">${label}</p>
-      <div class="trace-row" id="live-pills"></div>
+      <p class="spinner" id="processing-text">${label}</p>
     </div>
   `;
-  const statusEl = document.getElementById("status-text");
-  const pillsEl = document.getElementById("live-pills");
-  return {
-    onEvent(evt) {
-      lastTrace.push(evt);
-      const name = prettyName(evt.name);
-      if (evt.type === "call") {
-        statusEl.textContent = t().calling(name);
-        pillsEl.insertAdjacentHTML("beforeend", `<span class="pill call">⚡ ${name}</span>`);
-      } else {
-        statusEl.textContent = t().responded(name);
-        pillsEl.insertAdjacentHTML("beforeend", `<span class="pill done">✓ ${name}</span>`);
-      }
-    },
-  };
 }
 
 function renderFraming() {
   rerenderCurrentScreen = renderFraming;
   const s = t();
+  const titles = currentLanguage === "zh" ? SHADOW_TITLES_ZH : SHADOW_TITLES;
   root.innerHTML = `
     <div class="framing floating">
       <h1 class="hero-title">${s.heroTitle}</h1>
       <img class="hero-thumb" src="/img/thumbnail.png" alt="" />
       <p class="hero-lead">${s.heroLead1}</p>
       <p class="hero-lead">${s.heroLead2}</p>
+      <p class="type-preview-label">${s.typesPreviewLabel}</p>
+      <ul class="type-preview-list">
+        ${Object.values(titles).map((title) => `<li>${title}</li>`).join("")}
+      </ul>
       <div class="nav-row" style="justify-content:flex-end">
         <button id="start-btn">${s.startBtn}</button>
       </div>
@@ -588,8 +466,13 @@ function renderQuiz() {
         renderGroup();
         return;
       }
-      const proc = renderProcessing(t().scoringAnswers());
-      const data = await streamPost("/api/answers", { answers }, proc.onEvent);
+      renderProcessing(t().processingAnswers);
+      const data = await streamPost("/api/answers", { answers }, (evt) => {
+        if (evt.type === "phase" && evt.phase === "report") {
+          const el = document.getElementById("processing-text");
+          if (el) el.textContent = t().processingReport;
+        }
+      });
       sessionId = data.session_id;
       handleTurnResult(data);
     };
@@ -599,8 +482,8 @@ function renderQuiz() {
 }
 
 function handleTurnResult(data) {
-  if (!data.report_generated && data.followup_queue && data.followup_queue.length) {
-    renderFollowupPage(data.followup_queue);
+  if (!data.report_generated && data.followup_details && data.followup_details.length) {
+    renderFollowupPage(data.followup_details);
     return;
   }
   if (data.report_generated) {
@@ -610,15 +493,23 @@ function handleTurnResult(data) {
   renderReport({ final_report: data.reply, top_type_title: data.top_type_title });
 }
 
-function renderFollowupPage(queue) {
-  rerenderCurrentScreen = () => renderFollowupPage(queue);
+// details: [{shadow_type, prompt, option_a, option_b}, ...] — generated
+// server-side per-session by FollowUpAgent, so (unlike the old fixed
+// templates) switching language here only relabels the surrounding chrome
+// in place, the same "no retroactive translation" rule the report screen
+// already follows — already-generated questions don't regenerate.
+function renderFollowupPage(details) {
+  rerenderCurrentScreen = () => {
+    const s2 = t();
+    document.getElementById("fu-title").textContent = s2.followupTitle(details.length);
+    document.getElementById("fu-submit").textContent = s2.continueBtn;
+  };
   const chosen = {};
   const s = t();
-  const templates = currentFollowupTemplates();
 
   root.innerHTML = `
     <div class="floating">
-      <h1>${s.followupTitle}</h1>
+      <h1 id="fu-title">${s.followupTitle(details.length)}</h1>
       <div id="fu-questions"></div>
       <div class="nav-row" style="justify-content:flex-end">
         <button id="fu-submit" disabled>${s.continueBtn}</button>
@@ -627,14 +518,13 @@ function renderFollowupPage(queue) {
   `;
 
   const container = document.getElementById("fu-questions");
-  queue.forEach((type) => {
-    const template = templates[type];
+  details.forEach(({ shadow_type, prompt, option_a, option_b }) => {
     const block = el(`
       <div class="question">
-        <p class="text">${template.prompt}</p>
-        <div class="followup-options" data-type="${type}">
-          <button type="button" class="fu-opt secondary" data-type="${type}" data-side="a">${template.option_a}</button>
-          <button type="button" class="fu-opt secondary" data-type="${type}" data-side="b">${template.option_b}</button>
+        <p class="text">${prompt}</p>
+        <div class="followup-options" data-type="${shadow_type}">
+          <button type="button" class="fu-opt secondary" data-type="${shadow_type}" data-side="a">${option_a}</button>
+          <button type="button" class="fu-opt secondary" data-type="${shadow_type}" data-side="b">${option_b}</button>
         </div>
       </div>
     `);
@@ -642,20 +532,20 @@ function renderFollowupPage(queue) {
   });
 
   const submitBtn = document.getElementById("fu-submit");
+  const byType = Object.fromEntries(details.map((d) => [d.shadow_type, d]));
   container.addEventListener("click", (e) => {
     const btn = e.target.closest(".fu-opt");
     if (!btn) return;
     const type = btn.dataset.type;
-    const template = templates[type];
-    chosen[type] = btn.dataset.side === "a" ? template.option_a : template.option_b;
+    chosen[type] = btn.dataset.side === "a" ? byType[type].option_a : byType[type].option_b;
     container.querySelectorAll(`.fu-opt[data-type="${type}"]`).forEach((b) => b.classList.remove("selected"));
     btn.classList.add("selected");
-    submitBtn.disabled = Object.keys(chosen).length < queue.length;
+    submitBtn.disabled = Object.keys(chosen).length < details.length;
   });
 
   submitBtn.onclick = async () => {
-    const proc = renderProcessing(t().sendingFollowup());
-    const data = await streamPost("/api/followup-batch", { session_id: sessionId, answers: chosen }, proc.onEvent);
+    renderProcessing(t().processingReport);
+    const data = await streamPost("/api/followup-batch", { session_id: sessionId, answers: chosen }, () => {});
     handleTurnResult(data);
   };
 }
@@ -664,40 +554,90 @@ function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function renderReport(data) {
-  const s = t();
-  const hasGrounding = data.grounding_concepts && data.grounding_concepts.length;
-  const pillsInner = tracePillsInner(lastTrace) + (hasGrounding ? `<span class="pill done">✓ ${s.mcpPillLabel}</span>` : "");
-  const pillsRow = pillsInner ? `<div class="trace-row">${pillsInner}</div>` : "";
+function reportContentHtml(s, report, groundingConcepts) {
+  const hasGrounding = groundingConcepts && groundingConcepts.length;
   const groundingHtml = hasGrounding
     ? `<div class="grounding-block">
          <p class="grounding-label" id="relevant-ideas-label">${s.relevantIdeas}</p>
          <ul class="grounding-list">
-           ${data.grounding_concepts.map((c) => `<li>${capitalize(c)}</li>`).join("")}
+           ${groundingConcepts.map((c) => `<li>${capitalize(c)}</li>`).join("")}
          </ul>
        </div>`
     : "";
+  return `${groundingHtml}${renderReportBody(report || "")}`;
+}
 
-  // Switching language on this screen only relabels the surrounding chrome
-  // in place — it never re-renders the report body or chat log, since
-  // already-generated content doesn't retroactively translate.
-  rerenderCurrentScreen = () => {
+function renderReport(data) {
+  const s = t();
+
+  // The report was written once by InterpreterAgent in whichever language
+  // was selected at generation time. Switching language here translates
+  // that existing text via /api/translate-report (a small literal
+  // translation, not a full regeneration — so repeated switching doesn't
+  // drift into a different narrative) rather than leaving it stuck in the
+  // original language. Results are cached per language so toggling back and
+  // forth doesn't re-translate every time.
+  //
+  // Grounding concept labels are handled differently: they're NOT
+  // translated, they're MAPPED — the MCP corpus already carries a curated
+  // native-language label for each concept (concept_source /
+  // concept_source_zh), which the backend returns for both languages
+  // upfront. Running a curated label through a generic translator would
+  // produce different, less natural phrasing than the one actually written
+  // for that language, so this looks it up client-side instead — instant,
+  // no network call, and always the real curated text.
+  const originalLanguage = currentLanguage;
+  const originalReport = data.final_report || "";
+  const conceptsByLang = {
+    en: data.grounding_concepts_en || [],
+    zh: data.grounding_concepts_zh || [],
+  };
+  const topType = data.top_type;
+  const translationCache = {};
+
+  rerenderCurrentScreen = async () => {
     const s2 = t();
     document.getElementById("shadow-label").textContent = s2.yourShadowIs;
-    const gl = document.getElementById("relevant-ideas-label");
-    if (gl) gl.textContent = s2.relevantIdeas;
     document.getElementById("chat-input").placeholder = s2.chatPlaceholder;
     document.getElementById("chat-send").textContent = s2.send;
     document.getElementById("chat-hint").textContent = s2.chatHint;
+
+    const titles = currentLanguage === "zh" ? SHADOW_TITLES_ZH : SHADOW_TITLES;
+    const titleEl = document.getElementById("report-title");
+    if (titleEl && topType && titles[topType]) titleEl.textContent = titles[topType];
+
+    const bodyEl = document.getElementById("report-body-wrap");
+    if (!bodyEl) return;
+    const concepts = conceptsByLang[currentLanguage] || [];
+
+    if (currentLanguage === originalLanguage) {
+      bodyEl.innerHTML = reportContentHtml(s2, originalReport, concepts);
+      return;
+    }
+    if (translationCache[currentLanguage]) {
+      bodyEl.innerHTML = reportContentHtml(s2, translationCache[currentLanguage], concepts);
+      return;
+    }
+    const requestedLanguage = currentLanguage;
+    bodyEl.innerHTML = `<p class="spinner">${s2.processingReport}</p>`;
+    const res = await fetch("/api/translate-report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ report: originalReport, target_language: requestedLanguage }),
+    });
+    const translated = await res.json();
+    // If the user switched again while this was in flight, don't overwrite
+    // with a stale result for a language that's no longer selected.
+    if (currentLanguage !== requestedLanguage) return;
+    translationCache[requestedLanguage] = translated.report;
+    bodyEl.innerHTML = reportContentHtml(t(), translated.report, conceptsByLang[requestedLanguage] || []);
   };
 
   root.innerHTML = `
     <div class="floating" id="report-section">
       <p class="shadow-label" id="shadow-label">${s.yourShadowIs}</p>
-      <h1 class="big-title">${data.top_type_title || "Your reflection"}</h1>
-      ${pillsRow}
-      ${groundingHtml}
-      ${renderReportBody(data.final_report || "")}
+      <h1 class="big-title" id="report-title">${data.top_type_title || "Your reflection"}</h1>
+      <div id="report-body-wrap">${reportContentHtml(s, originalReport, conceptsByLang[originalLanguage] || [])}</div>
     </div>
     <div class="chat-log" id="chat-log"></div>
     <div class="chat-input-row">
@@ -723,24 +663,12 @@ function renderReport(data) {
     appendBubble(text, "user");
     input.value = "";
 
-    // The call pill appears live, as soon as the request goes out — not
-    // after the fact. CompanionAgent is a real separate agent, so its
-    // actual name is what's shown (no hardcoded override needed).
-    let pillsRow = null;
     const thinkingBubble = appendBubble(
       `<span class="dot"></span><span class="dot"></span><span class="dot"></span>`,
       "agent thinking"
     );
 
-    const data = await streamPost("/api/message", { session_id: sessionId, text }, (evt) => {
-      if (!pillsRow) {
-        pillsRow = el(`<div class="trace-row"></div>`);
-        log.insertBefore(pillsRow, thinkingBubble);
-      }
-      const icon = evt.type === "call" ? "⚡" : "✓";
-      const cls = evt.type === "call" ? "call" : "done";
-      pillsRow.insertAdjacentHTML("beforeend", `<span class="pill ${cls}">${icon} ${prettyName(evt.name)}</span>`);
-    });
+    const data = await streamPost("/api/message", { session_id: sessionId, text }, () => {});
 
     thinkingBubble.remove();
     appendBubble(data.reply, data.crisis ? "crisis" : "agent");

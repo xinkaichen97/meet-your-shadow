@@ -36,7 +36,7 @@
     "shadow_type": "unpermitted_vulnerability",
     "keywords": ["vulnerability", "caretaking", "dependence", "self-sufficiency"],
     "concept_source": "shadow dynamics of the caretaker persona",
-    "concept_source_zh": "照顾者人格面具的阴影动力",
+    "concept_source_zh": "照顾者角色背后的阴影",
     "content": "A persona built around competence and self-sufficiency often carries a shadow made of the very dependency needs it was constructed to hide. The more reliable someone appears to others, the more likely their own need to be cared for has gone underground."
   },
   {
@@ -44,7 +44,7 @@
     "shadow_type": "unpermitted_vulnerability",
     "keywords": ["asking for help", "shame", "weakness"],
     "concept_source": "internalized disapproval of need",
-    "concept_source_zh": "对需求的内化否定",
+    "concept_source_zh": "把需要人照顾当成一种羞耻",
     "content": "Needs that were met with disapproval early in life often get relabeled internally as weakness. The adult may go on enforcing that same judgment on themselves long after the original disapproving voice is gone, without realizing whose voice it originally was."
   },
   {
@@ -84,7 +84,7 @@
     "shadow_type": "suppressed_anger",
     "keywords": ["anger", "emotional suppression", "childhood"],
     "concept_source": "the shadow life of suppressed anger",
-    "concept_source_zh": "被压抑愤怒的阴影生命",
+    "concept_source_zh": "被压抑的愤怒并未消失",
     "content": "Anger that was consistently punished or shamed in childhood doesn't vanish — it relocates into the shadow, and can resurface later as irritability, physical tension, or an unexplained pull toward conflict happening around, rather than within, the person."
   },
   {
@@ -156,7 +156,7 @@
     "shadow_type": "unfinished_past",
     "keywords": ["memory", "unresolved grief", "recurrence"],
     "concept_source": "unresolved experience as recurring present",
-    "concept_source_zh": "未解决的经历如反复出现的当下",
+    "concept_source_zh": "未解决的过去，会以当下的感受反复出现",
     "content": "Unresolved experiences don't stay in the past. They keep reappearing in present-tense feeling — a tightness, a memory that resurfaces unbidden — until they are actually metabolized rather than simply narrated as finished."
   }
 ]
