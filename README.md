@@ -13,9 +13,9 @@ A single-session, multi-agent self-reflection tool built on the [Google Agent De
 
 ## Problem Statement
 
-Everyone carries parts of themselves they've learned not to look at directly — a need they've relabeled as weakness, an anger they've stopped believing they feel, a want they've decided is selfish. By definition, these patterns are hard to see head-on: they're not absent, they're *displaced* — showing up instead as an outsized reaction to seeing that same trait in someone else (what Jungian psychology calls projection).
+Everyone carries parts of themselves they've learned not to look at directly — a need they've relabeled as weakness, an anger they've stopped believing they feel, a want they've decided is selfish. By definition, these patterns are hard to see head-on: they're not absent, they're *displaced* — showing up instead as an outsized reaction to seeing that same trait in someone else (what [Jungian psychology](https://en.wikipedia.org/wiki/Analytical_psychology) calls projection).
 
-Most self-assessment tools handle this badly in one of two directions. Generic personality quizzes ask directly ("Are you an angry person?") and get a socially-desirable answer, because the whole point of a denied trait is that a person won't self-report it accurately when asked head-on. Clinical-sounding tools go the other way — diagnostic language that feels like being handed a label, not an invitation to notice something.
+Most self-assessment tools handle this badly in one of two directions. Generic personality quizzes ask directly ("Are you an angry person?") and get a socially desirable answer, because the whole point of a denied trait is that a person won't self-report it accurately when asked head-on. Clinical-sounding tools go the other way — diagnostic language that feels like being handed a label, not an invitation to notice something.
 
 This project is a bet that the interesting version of this problem sits in between: score the *gap* between what someone says about themselves and what they say about others (the same question, asked twice, once inward and once outward), use that gap — not a direct question — to find the pattern, and then write about it in language that never diagnoses, never lists fixes, and treats the reader as someone capable of noticing something on their own.
 
