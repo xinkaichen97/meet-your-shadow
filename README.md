@@ -1,11 +1,11 @@
 # Meet Your Shadow
 ### A quiet AI agent for the parts of you that rarely get asked.
 
-A single-session, multi-agent self-reflection tool built on the [Google Agent Development Kit (ADK)](https://google.github.io/adk-docs/). The user answers 16 Likert-scale questions, the system detects psychological tension between paired questions, asks one to three clarifying follow-ups, and generates a personalized narrative grounded in real psychological concepts — then lets the user keep talking about it. Supported in English and Chinese.
+A single-session, multi-agent self-reflection tool built on the [Google Agent Development Kit (ADK)](https://google.github.io/adk-docs/). The user answers 16 Likert-scale questions, the system detects psychological tension between paired questions, asks one to three clarifying follow-ups, and generates a personalized narrative grounded in real psychological concepts — then lets the user keep talking about it. Supported in both English and Chinese (简体中文).
 
-**Live webpage:** https://shadow-agent-887841120412.us-east1.run.app/app (turned off at the moment due to hosting costs)
+**Live webpage:** https://shadow-agent-887841120412.us-east1.run.app/app
 
-**Demo video**: https://youtu.be/XI6WVBIIGuo
+**Demo video** (July 2026 version): https://youtu.be/XI6WVBIIGuo
 
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
